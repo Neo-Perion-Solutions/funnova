@@ -1,0 +1,1336 @@
+ # 🎓 FUNNOVA — Full Product Design Blueprint
+
+> **Roles Applied:** Senior Product Designer · Curriculum Architect · UX Strategist · Learning Experience Designer · Full-Stack System Planner · Educational App Architect
+
+---
+
+## TABLE OF CONTENTS
+
+1. [Product Thinking](#part-1)
+2. [Subject & Curriculum Planning](#part-2)
+3. [Lesson System Design](#part-3)
+4. [Question System Design](#part-4)
+5. [Progression Logic](#part-5)
+6. [Score Logic](#part-6)
+7. [Unlock Logic](#part-7)
+8. [Tracker / Dashboard Logic](#part-8)
+9. [Student Learning Flow](#part-9)
+10. [Data Architecture](#part-10)
+11. [Backend Logic](#part-11)
+12. [Final JSON / Data Structures](#part-12)
+13. [Final Product Rules](#part-13)
+
+---
+
+<a name="part-1"></a>
+# PART 1 — PRODUCT THINKING
+
+## A. What Kind of Learning Product This Is
+
+FUNNOVA is a **structured, curriculum-aligned digital learning platform** built specifically for elementary school students in Grades 4 and 5.
+
+It is not a general-purpose content library (like YouTube or Khan Academy). It is a **curated, progressive learning experience** — more like Duolingo meets a classroom curriculum. Every piece of content is intentional, age-appropriate, and connected to the next step.
+
+The product sits in the **EdTech category** known as *Learning Management Systems for K–12*, but simplified for young learners. Think of it as a student's personal learning journey app, where the school curriculum becomes a game-like but educational experience.
+
+---
+
+## B. What the Goal of the App Is
+
+The app has **three core goals**:
+
+| # | Goal | Why It Matters |
+|---|------|----------------|
+| 1 | **Deliver structured lessons** linked to grade and subject | Students learn the right content at the right level |
+| 2 | **Assess understanding** through quizzes after each lesson | Passive watching is not learning — questions force engagement |
+| 3 | **Track and reward progress** so students stay motivated | Motivation drives completion; completion drives learning |
+
+The platform should replace or supplement worksheet-based homework, act as a revision tool before exams, and give students a sense of ownership over their learning.
+
+---
+
+## C. Why Students Will Use It
+
+Young students (ages 9–11) are motivated by a combination of:
+
+- **Curiosity** — "What's in the next lesson?"
+- **Completion satisfaction** — "I finished this! What's next?"
+- **Visual progress** — seeing a progress bar fill up is intrinsically rewarding
+- **Feedback** — getting told "Correct! 🎉" feels better than silence
+- **Unlocking** — locked lessons create mystery and anticipation
+
+FUNNOVA is designed to engage all four of these drivers at once. Students use it because it feels like a game but teaches them like a classroom.
+
+---
+
+## D. What Makes the App Feel Complete and Motivating
+
+A learning app feels *incomplete* when:
+- Progress isn't saved
+- There's no sense of sequence
+- Feedback after quizzes is missing or boring
+- The design looks boring or childish
+
+FUNNOVA feels **complete and motivating** because:
+
+- ✅ Every lesson has a **clearly defined state** (done / active / locked)
+- ✅ Quizzes give **instant, emotional feedback** (score + message + emoji)
+- ✅ The **progress bar** fills as students complete lessons
+- ✅ **Unlocking** the next lesson feels like a reward, not a chore
+- ✅ Students can see their **total score** across a subject
+- ✅ The design is **colorful, child-friendly, and vibrant** — not dull
+
+---
+
+## E. What Makes the Learning Flow Effective
+
+An effective learning flow follows the **Understand → Practice → Reinforce** loop:
+
+```
+Watch Video → Answer Questions → See Score → Unlock Next Lesson
+     ↑                                              ↓
+     └──────────── Repeat for next lesson ──────────┘
+```
+
+This works because:
+1. **Video** delivers new information in an engaging, low-effort way
+2. **Quiz** forces the student to retrieve and apply what they just watched
+3. **Score feedback** shows them where they succeeded or failed
+4. **Unlock** gives them a goal to keep going
+
+This is based on the well-established **spacing effect** and **active recall** principles in cognitive learning science.
+
+---
+---
+
+<a name="part-2"></a>
+# PART 2 — SUBJECT & CURRICULUM PLANNING
+
+## A. How Many Subjects Should Exist
+
+For Grades 4 and 5: **2 subjects per grade = 4 subject instances total**
+
+| Grade | Subject 1 | Subject 2 |
+|-------|-----------|-----------|
+| 4 | Mathematics | Science |
+| 5 | Mathematics | Science |
+
+> **Why only 2?**  
+> For a young student audience, fewer subjects with deeper content beats more subjects with shallow content. Starting with 2 subjects makes the app achievable to build fully, and structured enough to feel complete. Additional subjects (English, Social Studies) can be added as v2 expansions.
+
+---
+
+## B. How Many Grades Should Exist
+
+**2 grades: Grade 4 and Grade 5.**
+
+This serves the 9–11 age group, which is a coherent learning stage. Grade 4 is the entry point; Grade 5 is slightly more advanced. The student picks their grade on login — they only ever see their own grade's content. This prevents confusion and keeps content age-appropriate.
+
+---
+
+## C. How Many Lessons Each Subject Should Have
+
+**10 lessons per subject per grade.**
+
+This is the sweet spot.
+
+| Factor | Why 10 Works |
+|--------|-------------|
+| **Completion** | 10 lessons can be completed in 2–3 weeks of regular use |
+| **Structure** | Easy (3) → Medium (4) → Hard (3) provides a clear arc |
+| **Scope** | Deep enough to cover a meaningful curriculum unit |
+| **Motivation** | A 10-step progress bar feels achievable, not overwhelming |
+| **Development** | 40 total lessons (4 subjects × 10) is a full, shippable v1 product |
+
+---
+
+## D. Lesson Arrangement Logic: Easy → Medium → Hard
+
+```
+Lessons 1–3   → EASY    (foundational concepts, direct recall)
+Lessons 4–7   → MEDIUM  (applying concepts, multi-step thinking)
+Lessons 8–10  → HARD    (complex problems, synthesis, real-world application)
+```
+
+This follows **Bloom's Taxonomy** — you always build from remembering → understanding → applying.
+
+---
+
+## E. Full Curriculum: 10 Lessons Per Subject
+
+### 📐 Grade 4 — Mathematics
+
+| Order | Title | Difficulty |
+|-------|-------|------------|
+| 1 | Understanding Place Value | Easy |
+| 2 | Addition with Regrouping | Easy |
+| 3 | Subtraction with Borrowing | Easy |
+| 4 | Multiplication Tables (2–5) | Medium |
+| 5 | Multiplication Tables (6–9) | Medium |
+| 6 | Introduction to Division | Medium |
+| 7 | Fractions: Part of a Whole | Medium |
+| 8 | Comparing and Ordering Fractions | Hard |
+| 9 | Geometry: Shapes and Angles | Hard |
+| 10 | Word Problems: Mixed Operations | Hard |
+
+---
+
+### 🔬 Grade 4 — Science
+
+| Order | Title | Difficulty |
+|-------|-------|------------|
+| 1 | Living and Non-Living Things | Easy |
+| 2 | Parts of a Plant | Easy |
+| 3 | How Plants Make Food (Photosynthesis) | Easy |
+| 4 | Types of Animals | Medium |
+| 5 | Animal Habitats | Medium |
+| 6 | The Water Cycle | Medium |
+| 7 | Weather and Seasons | Medium |
+| 8 | The Solar System | Hard |
+| 9 | Forces: Push and Pull | Hard |
+| 10 | Simple Machines | Hard |
+
+---
+
+### 📐 Grade 5 — Mathematics
+
+| Order | Title | Difficulty |
+|-------|-------|------------|
+| 1 | Large Numbers and Number Patterns | Easy |
+| 2 | Factors and Multiples | Easy |
+| 3 | Prime and Composite Numbers | Easy |
+| 4 | Operations with Decimals | Medium |
+| 5 | Fractions: Addition and Subtraction | Medium |
+| 6 | Fractions: Multiplication | Medium |
+| 7 | Introduction to Percentages | Medium |
+| 8 | Area and Perimeter | Hard |
+| 9 | Data Handling and Graphs | Hard |
+| 10 | Ratio and Proportion | Hard |
+
+---
+
+### 🔬 Grade 5 — Science
+
+| Order | Title | Difficulty |
+|-------|-------|------------|
+| 1 | Cell: The Basic Unit of Life | Easy |
+| 2 | Human Body Systems Overview | Easy |
+| 3 | The Digestive System | Easy |
+| 4 | The Respiratory System | Medium |
+| 5 | The Circulatory System | Medium |
+| 6 | Food Chains and Food Webs | Medium |
+| 7 | Adaptation in Animals | Medium |
+| 8 | Matter: Solids, Liquids, Gases | Hard |
+| 9 | Light and Shadow | Hard |
+| 10 | Electricity and Circuits | Hard |
+
+---
+---
+
+<a name="part-3"></a>
+# PART 3 — LESSON SYSTEM DESIGN
+
+## A. Every Lesson Must Have These Fields
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | Integer | Unique identifier in DB |
+| `subject_id` | Integer (FK) | Connects lesson to its subject |
+| `title` | String | The display name of the lesson |
+| `subtitle` | String | A short description / teaser for the lesson |
+| `lesson_order` | Integer | The sequential position (1–10) |
+| `difficulty` | Enum: easy/medium/hard | Visual difficulty indicator |
+| `status` | Computed: done/active/locked | Derived per student — not stored in lessons table |
+| `video_url` | URL String | Embedded YouTube / video link |
+| `video_title` | String | Descriptive title of the video content |
+| `duration_minutes` | Integer | Expected time to complete |
+| `quiz_questions` | Array (from questions table) | 3 questions: MCQ + fill_blank + true_false |
+| `games` | Array (from games table) | Optional bonus games |
+| `created_at` | Timestamp | Audit trail |
+
+> **Note:** `status` is **never stored** in the lessons table. It is **computed at runtime** by comparing the student's progress records against the lesson's `lesson_order`. This keeps the lessons table clean and reusable across all students.
+
+---
+
+## B. The Purpose of Each Key Field
+
+- **`lesson_order`** — this IS the curriculum sequence. Every unlock decision is based on comparing a student's highest completed `lesson_order` vs. the current lesson's order.
+- **`video_url`** — the primary learning delivery mechanism. The student watches before attempting the quiz.
+- **`status` (computed)** — this drives the entire visual state of the lesson card (locked gray, active glowing, done green checkmark).
+- **`quiz_questions`** — these are the assessment. Without them, there's no measurable learning.
+- **`difficulty`** — this helps set student expectations. A student who sees "Hard" prepares themselves mentally.
+
+---
+
+## C. What Makes One Lesson Feel Complete
+
+A lesson is **complete** when a student has:
+1. ✅ Watched the video (or scrolled past the video player)  
+2. ✅ Answered all 3 quiz questions  
+3. ✅ Submitted their answers  
+4. ✅ Received a score (even 0/3 — completion is not perfection)
+
+A lesson feeling **pedagogically complete** means:
+- The video introduces the concept clearly
+- The MCQ tests recognition
+- The Fill-in-the-Blank tests recall
+- The True/False tests comprehension
+- Together, these 3 question types cover 3 different cognitive levels
+
+---
+
+## D. Visual and Logical Structure of a Lesson
+
+```
+┌─────────────────────────────────────────────────┐
+│  LESSON HEADER                                  │
+│  Title: "Multiplication Tables (2–5)"           │
+│  Subject: Mathematics · Grade 4 · Lesson 4      │
+│  Difficulty: ⭐⭐ Medium                         │
+├─────────────────────────────────────────────────┤
+│  VIDEO SECTION                                  │
+│  [Embedded YouTube Player]                      │
+│  Video Title: "Learn Times Tables 2 to 5"       │
+├─────────────────────────────────────────────────┤
+│  QUIZ SECTION                                   │
+│  Question 1: MCQ (4 options)                   │
+│  Question 2: Fill in the Blank                 │
+│  Question 3: True / False                      │
+│  [SUBMIT ANSWERS Button]                        │
+├─────────────────────────────────────────────────┤
+│  BONUS GAME (optional)                          │
+│  [Play Times Table Blaster 🎮]                  │
+└─────────────────────────────────────────────────┘
+```
+
+---
+---
+
+<a name="part-4"></a>
+# PART 4 — QUESTION SYSTEM DESIGN
+
+## A. Why Different Question Types Are Useful
+
+Using only one question type (e.g., only MCQ) has a fatal flaw: **students can guess**. Multiple types force different cognitive processes and reduce guessing bias.
+
+They also test **different cognitive levels**:
+- MCQ → Recognition
+- Fill in the Blank → Recall
+- True/False → Comprehension / Critical Thinking
+
+---
+
+## B. The Three Question Types
+
+### MCQ — Multiple Choice Question
+- **Format:** 1 question + 4 answer options (A, B, C, D)
+- **One correct answer**
+- **Why useful:** Students must identify the right answer from plausible distractors. This tests whether they understood the concept well enough to distinguish correct from incorrect.
+
+### Fill in the Blank
+- **Format:** A sentence with one blank `____`
+- **Student types a word or number**
+- **Why useful:** This is pure **recall** — the student cannot guess from options. They must retrieve the answer from memory. This is the hardest and most honest test of learning.
+
+### True / False
+- **Format:** A statement that is either correct or incorrect
+- **Student selects True or False**
+- **Why useful:** Tests **conceptual comprehension**. A well-written T/F question requires the student to reason, not just remember. It also provides a confidence-check moment.
+
+---
+
+## C. How Many Questions Per Lesson
+
+**Exactly 3 questions per lesson.**
+
+| Question # | Type | Point Value |
+|-----------|------|-------------|
+| 1 | MCQ | 1 point |
+| 2 | Fill in the Blank | 1 point |
+| 3 | True / False | 1 point |
+| **Total** | | **3 points** |
+
+> **Why 3?**  
+> For young learners (ages 9–11), quiz fatigue is real. 3 questions is short enough to not feel like a test, but substantial enough to cover 3 different cognitive levels. Every question type is always present — consistent and predictable.
+
+---
+
+## D. What Makes a Question "Good"
+
+A good question for this age group must be:
+
+| Criterion | Explanation |
+|-----------|-------------|
+| **Directly tied to the video** | The answer must come from the lesson content |
+| **Single-concept focus** | Tests one idea at a time, not compound ideas |
+| **Age-appropriate language** | Simple sentences, no jargon |
+| **Plausible distractors (MCQ)** | Wrong answers should be believable, not obviously silly |
+| **Unambiguous correct answer** | There must be one and only one right answer |
+| **Non-trivial** | "What color is the sky?" is too easy. It must require recall/thinking |
+
+---
+
+## E. Full Quiz Structure — Grade 4 Mathematics, Lesson 4: Multiplication Tables (2–5)
+
+```
+Question 1 (MCQ):
+"What is 4 × 3?"
+A. 8
+B. 10
+C. 12 ✅
+D. 14
+
+Question 2 (Fill in the Blank):
+"5 × 5 = ____"
+Correct Answer: 25
+
+Question 3 (True / False):
+"3 × 4 gives the same answer as 4 × 3"
+Correct Answer: True ✅
+```
+
+---
+
+## F. Age-Appropriate Question Design Rules
+
+1. **Use numbers they know** — Grade 4 students know 1–9 multiplication. Don't go to 12 × 13.
+2. **Use real-world context where possible** — "There are 4 rows with 3 chairs each. How many chairs?" not just "4 × 3 = ?"
+3. **Keep sentence length short** — Maximum 15 words per question.
+4. **True/False statements should not be trick questions** — They should test understanding, not tricky wording.
+5. **Fill in the Blank answers** for Grade 4 should be a single word or number, never a phrase.
+
+---
+
+## G. Lesson Content Creation Template
+
+Use this template process when drafting new content to ensure every lesson has the required structure (Lesson Name slot, MCQ, Fill in the Blank, and True/False questions):
+
+```text
+Lesson Name Slot: [Insert Title Here]
+Subtitle: [Insert Subtitle / Description]
+Difficulty: [Easy / Medium / Hard]
+
+--- MCQ Question ---
+Question: [Insert MCQ Question Text]
+A) [Option A]
+B) [Option B]
+C) [Option C]
+D) [Option D]
+Correct Answer: [A, B, C, or D]
+
+--- Fill in the Blank ---
+Question: [Insert sentence with a ____ blank]
+Correct Answer: [Insert single word/number]
+
+--- True or False ---
+Question: [Insert True/False statement]
+Correct Answer: [True / False]
+```
+
+---
+---
+
+<a name="part-5"></a>
+# PART 5 — PROGRESSION LOGIC
+
+## A. What Lesson States Should Exist
+
+FUNNOVA uses exactly **3 lesson states**:
+
+| State | Visual | Meaning |
+|-------|--------|---------|
+| `done` | ✅ Green card + checkmark | Student has completed and submitted the quiz |
+| `active` | 🟡 Glowing / highlighted card | Student's current lesson — ready to take |
+| `locked` | 🔒 Gray card + lock icon | Not yet available |
+
+---
+
+## B. Why These 3 States Work
+
+- **`done`** — Gives the student visible proof of their achievement. Every completed lesson is a celebration tile.
+- **`active`** — Acts like a "current chapter" marker. The student always knows exactly what to do next. There is **always exactly one active lesson at a time** per subject.
+- **`locked`** — Creates anticipation and prevents skip-ahead chaos. Students can see what's coming but must earn it.
+
+This is psychologically effective because it uses **goal gradient effect** — the closer a student gets to the next unlock, the more motivated they are to finish the current lesson.
+
+---
+
+## C. How Status Is Computed Per Student
+
+The system computes a student's lesson status as follows:
+
+```
+For each lesson in subject (ordered by lesson_order):
+
+  IF student has a completed progress record for this lesson:
+    → status = "done"
+  
+  ELSE IF previous lesson is "done" (or this is lesson 1):
+    → status = "active"
+  
+  ELSE:
+    → status = "locked"
+```
+
+**Example: Student has completed Lessons 1 and 2**
+
+```
+Lesson 1: done   ✅
+Lesson 2: done   ✅
+Lesson 3: active 🟡   ← This is where the student is
+Lesson 4: locked 🔒
+Lesson 5: locked 🔒
+...
+Lesson 10: locked 🔒
+```
+
+---
+
+## D. What Students See First
+
+When a new student opens a subject for the **first time**:
+- Lesson 1 is **immediately `active`**
+- Lessons 2–10 are **`locked`**
+
+This is intentional. The student is never confused about where to start. There is only one action available: **Start Lesson 1**.
+
+---
+
+## E. Why This Works Psychologically and Educationally
+
+**Psychologically:**
+- Locked content creates a sense of progression and reward
+- The "one active lesson" focus reduces decision fatigue
+- Completed lessons give a sense of accomplishment and ownership
+
+**Educationally:**
+- Sequential unlocking enforces the curriculum order (easy → hard)
+- A student cannot skip to Lesson 8 (Geometry) without first mastering Lesson 7 (Fractions)
+- Every prerequisite concept is guaranteed to have been seen before harder content
+
+---
+---
+
+<a name="part-6"></a>
+# PART 6 — SCORE LOGIC
+
+## A. How Lesson Scoring Works
+
+Each quiz has **3 questions worth 1 point each.**
+Score = Count of correct answers (0 to 3).
+
+This is a **raw score** (not percentage-based) at the lesson level, but **percentage-based** at the subject and dashboard level.
+
+---
+
+## B. Score Calculation Formula
+
+```
+lesson_score = correct_answers_count        // 0, 1, 2, or 3
+subject_total_score = SUM(lesson_scores)     // across all completed lessons
+subject_max_score = completed_lessons × 3    // maximum possible
+subject_percentage = (subject_total_score / subject_max_score) × 100
+```
+
+---
+
+## C. Feedback for Each Score
+
+This is the emotional layer of FUNNOVA. Every score must trigger a **distinct emotional response**.
+
+| Score | Emoji | Title | Message |
+|-------|-------|-------|---------|
+| 3/3 | 🏆 | "Perfect Score!" | "Amazing! You got everything right! You're a superstar!" |
+| 2/3 | 🎉 | "Great Job!" | "Well done! You got 2 out of 3. You're almost there!" |
+| 1/3 | 👍 | "Keep Going!" | "Good try! You got 1 out of 3. Watch the video again and you'll do better!" |
+| 0/3 | 💪 | "Don't Give Up!" | "You scored 0 this time. That's okay! Review the lesson and try again next time." |
+
+---
+
+## D. Score Popup Design (Logical Spec)
+
+```
+┌────────────────────────────────────┐
+│  🏆  Perfect Score!                │
+│  You scored 3 / 3                  │
+│                                    │
+│  ✅ Question 1 — Correct           │
+│  ✅ Question 2 — Correct           │
+│  ✅ Question 3 — Correct           │
+│                                    │
+│  [Next Lesson 🔓]   [Back to List] │
+└────────────────────────────────────┘
+```
+
+The popup must show:
+- The title + emoji (emotion first)
+- The numeric score (confirmation)
+- Per-question result (✅ or ❌) — this is critical for learning from mistakes
+- Two actions: go to next lesson, or go back to subject list
+
+---
+
+## E. Score Storage
+
+Score is stored in two places:
+
+1. **`student_progress`** — individual question-level answers (`is_correct`, `answer_given`)
+2. **`student_scores`** — aggregated per-subject totals (`score`, `total`)
+
+When a student submits a quiz:
+1. Each answer is saved to `student_progress`
+2. The `student_scores` row for this student+subject is upserted (score += correct answers, total += 3)
+
+---
+---
+
+<a name="part-7"></a>
+# PART 7 — UNLOCK LOGIC
+
+## A. When a Lesson Becomes "Done"
+
+A lesson becomes `done` **only when the student submits the quiz** via the Submit Answers button. Not when they watch the video. Not when they open the lesson. **Only after quiz submission.**
+
+This is a critical rule. It prevents fake progress where a student watches 10 seconds of video and skips ahead.
+
+---
+
+## B. When the Next Lesson Unlocks
+
+The next lesson unlocks **immediately** after the current lesson's quiz is submitted — regardless of score.
+
+> **Why not require a passing score to unlock?**  
+> For young learners, blocking progress behind a score threshold creates frustration, not motivation. A student who scored 0/3 still watched the video and engaged with the quiz. That is learning. We reward **engagement**, not perfection.  
+>  
+> However, the **score is permanently recorded**, so teachers and parents can see where the student struggled — even if the student moved on.
+
+---
+
+## C. What Counts as "Completion"
+
+A lesson is **complete** when:
+- The student has a `student_progress` row for **all 3 questions** of that lesson from their student ID
+- Essentially: `COUNT(progress rows where lesson_id = X and student_id = Y) = 3`
+
+---
+
+## D. How to Prevent Fake Progress
+
+Several technical safeguards prevent cheating or incomplete submissions:
+
+| Safeguard | Implementation |
+|-----------|---------------|
+| **All 3 answers required** | Frontend disables submit button until all questions are answered |
+| **Backend re-validates** | The submit API checks that answers exist for all 3 question IDs |
+| **UNIQUE constraint** | `student_progress` has UNIQUE(student_id, question_id) — prevents double submission |
+| **Status is computed server-side** | The client never tells the server what the status is — server always re-derives it |
+| **JWT authentication** | All progress APIs require a valid student token |
+
+---
+
+## E. The Unlock Flow (Step by Step)
+
+```
+1. Student finishes answering Q1, Q2, Q3
+2. Student clicks [Submit Answers]
+3. Frontend sends POST /api/progress/submit
+4. Backend saves 3 rows to student_progress
+5. Backend UPSERTs student_scores
+6. Backend responds: { score: 2, total: 3, nextLessonId: 5 }
+7. Frontend shows Score Popup
+8. Student clicks [Next Lesson 🔓]
+9. Frontend loads Lesson 5 (previously locked, now active)
+```
+
+---
+---
+
+<a name="part-8"></a>
+# PART 8 — TRACKER / DASHBOARD LOGIC
+
+## A. What Should Be Shown on the Dashboard
+
+The student dashboard is their **progress headquarters**. It must show:
+
+| Metric | Description |
+|--------|-------------|
+| Student Name + Grade | Personalization — makes it feel like "my" app |
+| Overall Progress | Total lessons completed across all subjects |
+| Subject Cards | One card per subject with subject-specific progress |
+| Lessons Completed (per subject) | "4 / 10 Lessons Done" |
+| Progress Bar (per subject) | Visual percentage fill |
+| Subject Score | "Score: 9 / 12" or equivalent |
+| Recent Activity | Last lesson completed (optional v2) |
+
+---
+
+## B. Exact Formulas
+
+```
+// Lessons completed for a subject:
+lessons_completed = COUNT(DISTINCT lesson_id)
+  FROM student_progress
+  WHERE student_id = X
+    AND lesson_id IN (lessons of subject Y)
+  GROUP BY lesson_id
+  HAVING COUNT(*) = 3   -- all 3 questions answered
+
+// Subject progress percentage:
+subject_progress_pct = (lessons_completed / 10) × 100
+
+// Subject score percentage:
+subject_score_pct = (total_correct / total_questions_attempted) × 100
+  -- drawn from student_scores: (score / total) × 100
+
+// Overall progress (across all subjects for the grade):
+overall_progress_pct = (total_lessons_completed_across_subjects / total_lessons_in_grade) × 100
+  -- For a 2-subject, 10-lesson-each grade: (X / 20) × 100
+```
+
+---
+
+## C. Dashboard Views
+
+### Subject Progress Card
+
+```
+┌─────────────────────────────────┐
+│ ➕ Mathematics       Grade 4    │
+│ ████████░░░░  4 / 10 Lessons    │
+│ Score: 9 / 12 points            │
+│ [Continue Learning →]           │
+└─────────────────────────────────┘
+```
+
+### Overall Progress Widget
+
+```
+┌─────────────────────────────────┐
+│ 👋 Hello, Alice!                │
+│ Grade 4 · Section A             │
+│                                 │
+│ Overall Progress                │
+│ ████████████░░░░░  7 / 20 Done  │
+│ 35% complete                    │
+└─────────────────────────────────┘
+```
+
+---
+
+## D. What Makes Tracking Feel Satisfying
+
+1. **Numbers over words** — "4 / 10" is more powerful than "In Progress"
+2. **Progress bars** — Visual fill gives a physical sense of movement
+3. **Subject separation** — Students can see which subject they're stronger in
+4. **Score shown as fraction** — "9/12 points" is more meaningful than "75%"
+5. **Personalization** — Student name + avatar makes it feel personal
+6. **Consistency** — Dashboard always reflects the most current state (never stale)
+
+---
+---
+
+<a name="part-9"></a>
+# PART 9 — STUDENT LEARNING FLOW
+
+The complete, step-by-step student journey:
+
+---
+
+### Step 1: Login
+
+**What happens:** Student enters their Student ID and password.  
+**Backend:** POST /api/auth/login → JWT token returned. Student grade stored in token payload.  
+**Student feels:** Recognized. Safe. This is *my* space.  
+**Why it exists:** Authentication protects each student's private progress. An anonymous system cannot track anything.
+
+---
+
+### Step 2: Grade Selection (or Auto-Detect)
+
+**What happens:** If the JWT contains the grade (stored on registration), the student is automatically routed to their grade's subject list. No choice needed.  
+**Why:** A Grade 4 student should never accidentally see Grade 5 content. The grade is set by the school, not the student.  
+**Student feels:** The app already knows who I am.
+
+---
+
+### Step 3: Subject Selection
+
+**What happens:** Student sees subject cards for their grade (Mathematics, Science).  
+**Each card shows:** Subject icon, progress bar, lessons completed, current score.  
+**Student feels:** I can choose where to focus today.  
+**Why it exists:** Subject choice gives agency — even if it's limited to 2 options.
+
+---
+
+### Step 4: Lesson List
+
+**What happens:** Student sees all 10 lessons in order. Each lesson has its computed status: done ✅, active 🟡, or locked 🔒.  
+**Student feels:** I can see where I am in the journey. I know what to do next.  
+**Why it exists:** The lesson list is the student's curriculum map. It's both a to-do list and a record of achievement.
+
+---
+
+### Step 5: Lesson Content
+
+**What happens:** Student taps the active lesson. The lesson opens with the embedded video and below it, the 3 quiz questions (but the submit button is disabled until all are answered).  
+**Student feels:** This is manageable. I watch, then I answer.  
+**Why it exists:** The lesson page is the core learning surface. Everything else leads here.
+
+---
+
+### Step 6: Quiz Attempt
+
+**What happens:** Student answers Q1 (MCQ), Q2 (Fill in Blank), Q3 (True/False). The UI shows which questions are answered and which remain. The Submit button activates only when all 3 are filled.  
+**Student feels:** Focused. A little bit of challenge. Maybe some uncertainty — that's healthy.  
+**Why it exists:** Quizzes are the assessment layer that converts passive watching into active learning.
+
+---
+
+### Step 7: Score Popup
+
+**What happens:** On submit, score popup appears with emoji, score fraction, per-question result breakdown (✅/❌), and two action buttons.  
+**Student feels:** Relief, pride, or determination. Every score gets a message that validates effort.  
+**Why it exists:** Feedback is the moment of learning consolidation. Without it, the quiz is meaningless.
+
+---
+
+### Step 8: Progress Update
+
+**What happens (backend):** 3 progress rows saved, student_scores upserted, lesson status recomputed on next load.  
+**What happens (frontend):** The lesson's tile on the list view becomes ✅ done. Progress bar increments.  
+**Student feels:** I did something real. The app remembers.  
+**Why it exists:** Progress persistence is the foundation of motivation. If progress wasn't saved, there'd be no reason to return.
+
+---
+
+### Step 9: Next Lesson Unlock
+
+**What happens:** The next lesson's tile transitions from 🔒 locked → 🟡 active. Student can see this happen immediately.  
+**Student feels:** I earned something. I unlocked a new chapter.  
+**Why it exists:** This is the reward moment — the emotional payoff of the entire flow.
+
+---
+
+### Step 10: Repeat Learning Loop
+
+**What happens:** Student taps the newly unlocked lesson. The flow repeats from Step 5.  
+**Why it exists:** A properly designed learning loop creates a habit. Each completion is its own beginning.
+
+---
+---
+
+<a name="part-10"></a>
+# PART 10 — DATA ARCHITECTURE
+
+## A. Entities and Their Relationships
+
+```
+students ──< student_progress >── questions
+    │                │
+    │            lessons ──< questions
+    │                │
+    └─< student_scores    subjects >── lessons
+                              │
+                           games
+```
+
+---
+
+## B. Full Table Definitions (Aligned with Existing Schema)
+
+### `students`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal DB identifier |
+| student_id | VARCHAR(20) UNIQUE | Human-facing ID (e.g., STU-001) |
+| name | VARCHAR(100) | Display name |
+| password | VARCHAR(255) | bcrypt hashed |
+| grade | INTEGER (4 or 5) | Controls which subjects are shown |
+| section | VARCHAR(10) | Class section (A, B, C) |
+| avatar_url | TEXT | Emoji or image URL |
+| role | VARCHAR(10) | 'student' or 'admin' |
+| created_at | TIMESTAMP | Account creation time |
+
+### `subjects`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal ID |
+| name | VARCHAR(50) | "Mathematics", "Science" |
+| icon | VARCHAR(10) | Emoji icon (➕, 🔬) |
+| grade | INTEGER | 4 or 5 — filters by student grade |
+
+### `lessons`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal ID |
+| subject_id | INTEGER (FK) | Links to subjects |
+| title | VARCHAR(200) | Lesson title |
+| lesson_order | INTEGER | Sequence (1–10) — drives unlock logic |
+| video_url | TEXT | Embedded video URL |
+| created_at | TIMESTAMP | Audit trail |
+
+> **Schema enhancement needed:** Add `subtitle TEXT`, `difficulty VARCHAR(10)`, `duration_minutes INTEGER` for richer lesson data.
+
+### `questions`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal ID |
+| lesson_id | INTEGER (FK) | Links to lesson |
+| type | VARCHAR(20) | 'mcq', 'fill_blank', 'true_false' |
+| question_text | TEXT | The question itself |
+| option_a–d | TEXT | MCQ options (null for non-MCQ) |
+| correct_answer | VARCHAR(50) | The right answer |
+| question_order | INTEGER | 1, 2, or 3 within the lesson |
+
+### `games`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal ID |
+| lesson_id | INTEGER (FK) | Links to lesson |
+| title | VARCHAR(100) | Game name |
+| game_url | TEXT | Game embed or redirect URL |
+| icon | VARCHAR(10) | Emoji icon |
+| is_hidden | BOOLEAN | Admin toggle to hide games |
+| game_order | INTEGER | Ordering of multiple games |
+
+### `student_progress`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal ID |
+| student_id | INTEGER (FK) | Which student |
+| lesson_id | INTEGER (FK) | Which lesson |
+| question_id | INTEGER (FK) | Which specific question |
+| answer_given | TEXT | What the student typed/selected |
+| is_correct | BOOLEAN | Whether it was right |
+| answered_at | TIMESTAMP | When it was answered |
+| UNIQUE(student_id, question_id) | — | Prevents double submission |
+
+### `student_scores`
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | SERIAL PK | Internal ID |
+| student_id | INTEGER (FK) | Which student |
+| subject_id | INTEGER (FK) | Which subject |
+| score | INTEGER | Total correct answers so far |
+| total | INTEGER | Total questions attempted so far |
+| updated_at | TIMESTAMP | Last update time |
+| UNIQUE(student_id, subject_id) | — | One score row per student per subject |
+
+---
+---
+
+<a name="part-11"></a>
+# PART 11 — BACKEND LOGIC
+
+## A. Full API Map
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/auth/login` | Authenticate student, return JWT |
+| GET | `/api/subjects?grade=4` | Fetch all subjects for a grade |
+| GET | `/api/lessons?subject_id=1&student_id=5` | Fetch lessons with computed status |
+| GET | `/api/lessons/:id` | Fetch single lesson with questions + games |
+| POST | `/api/progress/submit` | Submit quiz answers and calculate score |
+| GET | `/api/progress/summary/:student_id` | Fetch dashboard tracker data |
+| GET | `/api/progress/subject/:student_id/:subject_id` | Fetch progress for one subject |
+
+---
+
+## B. Detailed Logic Behind Each Endpoint
+
+---
+
+### POST `/api/auth/login`
+
+```
+1. Receive { student_id, password }
+2. Query: SELECT * FROM students WHERE student_id = $1
+3. If not found → 401 Unauthorized
+4. bcrypt.compare(password, student.password)
+5. If mismatch → 401 Unauthorized
+6. Generate JWT: { id, student_id, name, grade, role }
+7. Return: { token, student: { name, grade, avatar_url } }
+```
+
+---
+
+### GET `/api/subjects?grade=4`
+
+```
+1. Receive grade from query param (extracted from JWT or query string)
+2. Query: SELECT * FROM subjects WHERE grade = $1
+3. For each subject, optionally JOIN student_scores to include score data
+4. Return: [{ id, name, icon, grade, score, total }]
+```
+
+---
+
+### GET `/api/lessons?subject_id=1&student_id=5`
+
+This is the most complex endpoint — it must compute lesson status.
+
+```
+1. Fetch all lessons for subject_id, ORDER BY lesson_order ASC
+2. Fetch all student_progress rows for this student where lesson_id IN (...)
+3. Count how many questions are answered per lesson:
+   completed_lessons = lessons where answer_count = 3
+4. For each lesson, compute status:
+   - If lesson_id in completed_lessons → "done"
+   - Else if previous lesson is done (or is lesson 1) → "active"
+   - Else → "locked"
+5. Return lessons array with computed status field:
+   [{ id, title, lesson_order, status, video_url, ... }]
+```
+
+---
+
+### POST `/api/progress/submit`
+
+This is the core transaction — it must be atomic.
+
+```
+Body: {
+  student_id: 5,
+  lesson_id: 3,
+  answers: [
+    { question_id: 7, answer_given: "C" },
+    { question_id: 8, answer_given: "25" },
+    { question_id: 9, answer_given: "True" }
+  ]
+}
+
+Logic:
+1. Validate: are all 3 question_ids valid for this lesson? → 400 if not
+2. Fetch correct answers for these question_ids from DB
+3. For each answer:
+   - is_correct = (answer_given.trim().toLowerCase() === correct_answer.toLowerCase())
+4. BEGIN TRANSACTION
+5. INSERT into student_progress for each answer (ON CONFLICT DO NOTHING)
+6. count correct_count = number of is_correct = true
+7. UPSERT student_scores:
+   INSERT INTO student_scores (student_id, subject_id, score, total)
+   VALUES ($1, $2, $3, 3)
+   ON CONFLICT (student_id, subject_id) DO UPDATE
+   SET score = student_scores.score + $3,
+       total = student_scores.total + 3,
+       updated_at = NOW()
+8. COMMIT TRANSACTION
+9. Return: { score: correct_count, total: 3, message: "...", nextLessonId: X }
+```
+
+---
+
+### GET `/api/progress/summary/:student_id`
+
+For the dashboard.
+
+```
+1. Fetch student info (name, grade, avatar)
+2. Fetch all subjects for this student's grade
+3. For each subject:
+   a. Query student_scores for this student + subject
+   b. Query student_progress to count completed lessons
+   c. Compute: { lessons_completed, total_lessons: 10, score, total, progress_pct }
+4. Compute overall:
+   overall_completed = SUM(lessons_completed across all subjects)
+   overall_total = SUM(total_lessons across all subjects)  // 20 for 2 subjects
+   overall_pct = (overall_completed / overall_total) * 100
+5. Return: { student, subjects: [...], overall: { completed, total, pct } }
+```
+
+---
+---
+
+<a name="part-12"></a>
+# PART 12 — FINAL JSON / DATA STRUCTURES
+
+## A. One Subject
+
+```json
+{
+  "id": 1,
+  "name": "Mathematics",
+  "icon": "➕",
+  "grade": 4,
+  "student_score": {
+    "score": 9,
+    "total": 12,
+    "percentage": 75
+  },
+  "progress": {
+    "lessons_completed": 4,
+    "total_lessons": 10,
+    "percentage": 40
+  }
+}
+```
+
+---
+
+## B. One Lesson (with computed status)
+
+```json
+{
+  "id": 4,
+  "subject_id": 1,
+  "title": "Multiplication Tables (2–5)",
+  "subtitle": "Learn the times tables from 2 to 5 through fun patterns",
+  "lesson_order": 4,
+  "difficulty": "medium",
+  "duration_minutes": 8,
+  "status": "active",
+  "video_url": "https://www.youtube.com/embed/EXAMPLE_VIDEO_ID",
+  "video_title": "Learn Times Tables 2 to 5 — Fun Math for Kids",
+  "created_at": "2026-04-01T00:00:00Z"
+}
+```
+
+---
+
+## C. One Question Set (for Lesson 4)
+
+```json
+[
+  {
+    "id": 10,
+    "lesson_id": 4,
+    "type": "mcq",
+    "question_text": "What is 4 × 3?",
+    "option_a": "8",
+    "option_b": "10",
+    "option_c": "12",
+    "option_d": "14",
+    "correct_answer": "C",
+    "question_order": 1
+  },
+  {
+    "id": 11,
+    "lesson_id": 4,
+    "type": "fill_blank",
+    "question_text": "5 × 5 = ____",
+    "option_a": null,
+    "option_b": null,
+    "option_c": null,
+    "option_d": null,
+    "correct_answer": "25",
+    "question_order": 2
+  },
+  {
+    "id": 12,
+    "lesson_id": 4,
+    "type": "true_false",
+    "question_text": "3 × 4 gives the same answer as 4 × 3",
+    "option_a": null,
+    "option_b": null,
+    "option_c": null,
+    "option_d": null,
+    "correct_answer": "True",
+    "question_order": 3
+  }
+]
+```
+
+---
+
+## D. One Student Progress Record (after quiz submission)
+
+```json
+[
+  {
+    "id": 55,
+    "student_id": 1,
+    "lesson_id": 4,
+    "question_id": 10,
+    "answer_given": "C",
+    "is_correct": true,
+    "answered_at": "2026-04-06T14:23:11Z"
+  },
+  {
+    "id": 56,
+    "student_id": 1,
+    "lesson_id": 4,
+    "question_id": 11,
+    "answer_given": "25",
+    "is_correct": true,
+    "answered_at": "2026-04-06T14:23:11Z"
+  },
+  {
+    "id": 57,
+    "student_id": 1,
+    "lesson_id": 4,
+    "question_id": 12,
+    "answer_given": "True",
+    "is_correct": true,
+    "answered_at": "2026-04-06T14:23:11Z"
+  }
+]
+```
+
+---
+
+## E. One Tracker Summary (Dashboard API Response)
+
+```json
+{
+  "student": {
+    "id": 1,
+    "student_id": "STU-001",
+    "name": "Alice Wonderland",
+    "grade": 4,
+    "section": "A",
+    "avatar_url": "👧"
+  },
+  "overall": {
+    "lessons_completed": 7,
+    "total_lessons": 20,
+    "percentage": 35
+  },
+  "subjects": [
+    {
+      "id": 1,
+      "name": "Mathematics",
+      "icon": "➕",
+      "lessons_completed": 4,
+      "total_lessons": 10,
+      "progress_percentage": 40,
+      "score": 9,
+      "total_questions_attempted": 12,
+      "score_percentage": 75
+    },
+    {
+      "id": 2,
+      "name": "Science",
+      "icon": "🔬",
+      "lessons_completed": 3,
+      "total_lessons": 10,
+      "progress_percentage": 30,
+      "score": 7,
+      "total_questions_attempted": 9,
+      "score_percentage": 78
+    }
+  ]
+}
+```
+
+---
+---
+
+<a name="part-13"></a>
+# PART 13 — FINAL PRODUCT RULES
+
+## 🏛️ FUNNOVA CORE LOGIC SYSTEM
+
+These are the permanent, non-negotiable rules of the FUNNOVA platform.
+
+---
+
+### 📚 CURRICULUM RULES
+
+```
+RULE C-1: The platform supports exactly 2 grades: Grade 4 and Grade 5.
+RULE C-2: Each grade has exactly 2 subjects: Mathematics and Science.
+RULE C-3: Each subject has exactly 10 lessons.
+RULE C-4: Lessons are arranged in order: Easy (1–3) → Medium (4–7) → Hard (8–10).
+RULE C-5: A student only ever sees content for their own registered grade.
+RULE C-6: Lesson order is permanent and cannot be skipped.
+```
+
+---
+
+### 📝 LESSON RULES
+
+```
+RULE L-1: Every lesson must have: title, lesson_order, video_url.
+RULE L-2: Every lesson must have exactly 3 questions: 1 MCQ + 1 Fill_Blank + 1 True_False.
+RULE L-3: Lesson status (done/active/locked) is COMPUTED per student — never stored in the lessons table.
+RULE L-4: A lesson has exactly 1 active state at a time per student per subject.
+RULE L-5: The first lesson of any subject is always "active" for a new student.
+```
+
+---
+
+### ❓ QUESTION RULES
+
+```
+RULE Q-1: Every lesson has exactly 3 questions. No more. No less.
+RULE Q-2: Question types must be: MCQ (order 1), Fill_Blank (order 2), True_False (order 3).
+RULE Q-3: Each question is worth exactly 1 point.
+RULE Q-4: Maximum score per lesson = 3.
+RULE Q-5: Correct answer comparison is case-insensitive and whitespace-trimmed.
+RULE Q-6: MCQ correct_answer stores the option letter (A, B, C, or D).
+RULE Q-7: Fill_Blank and True_False correct_answer stores the full expected answer string.
+```
+
+---
+
+### 📊 SCORE RULES
+
+```
+RULE S-1: Score per lesson is 0–3 (one point per correct answer).
+RULE S-2: Subject score is cumulative: SUM of all lesson scores for completed lessons.
+RULE S-3: Score feedback has 4 tiers: 3/3 (Perfect), 2/3 (Great), 1/3 (Keep Going), 0/3 (Don't Give Up).
+RULE S-4: Score popup always shows: emoji + title + message + per-question result.
+RULE S-5: Score is stored at two levels: question-level (student_progress) and subject-level (student_scores).
+RULE S-6: A submitted score can NEVER be altered by re-submission (UNIQUE constraint enforces this).
+```
+
+---
+
+### 🔓 UNLOCK RULES
+
+```
+RULE U-1: A lesson becomes "done" ONLY after quiz submission — not when the video is watched.
+RULE U-2: The next lesson unlocks immediately after the current lesson's quiz is submitted.
+RULE U-3: A student does NOT need a passing score to unlock the next lesson.
+RULE U-4: Unlock logic is enforced server-side. The client cannot self-report lesson completion.
+RULE U-5: The UNIQUE(student_id, question_id) constraint prevents a student from submitting the same question twice.
+```
+
+---
+
+### 📈 PROGRESS RULES
+
+```
+RULE P-1: A lesson is "completed" when all 3 of its questions have a student_progress row for the student.
+RULE P-2: Subject progress percentage = (completed_lessons / 10) × 100.
+RULE P-3: Overall progress = (total_completed_across_all_subjects / total_lessons_in_grade) × 100.
+RULE P-4: Dashboard data is always computed fresh from the database — never cached on the client.
+RULE P-5: Progress bars visually represent lesson-based completion percentage, not score percentage.
+RULE P-6: Score percentage (accuracy) and progress percentage (completion) are shown separately.
+```
+
+---
+
+### 🔒 SECURITY RULES
+
+```
+RULE SEC-1: All protected endpoints require a valid JWT in the Authorization header.
+RULE SEC-2: student_id in JWT must match the student_id in the request body for progress APIs.
+RULE SEC-3: Admin endpoints require role = 'admin' in JWT.
+RULE SEC-4: Passwords are always stored as bcrypt hashes — never plaintext.
+RULE SEC-5: The lessons/status endpoint always re-derives status from the database, never trusting client input.
+```
+
+---
+
+### 🎨 EXPERIENCE RULES
+
+```
+RULE UX-1: Locked lessons are visually distinct (gray, lock icon). Active lessons are visually prominent (glow/color).
+RULE UX-2: The Submit button is disabled until all 3 questions are answered.
+RULE UX-3: Score popup appears immediately after submission — no navigation delay.
+RULE UX-4: The score popup always offers exactly 2 actions: [Next Lesson] and [Back to Lessons].
+RULE UX-5: Progress bars must update immediately after quiz submission — no refresh required.
+RULE UX-6: New students always see a warm welcome with their name, grade, and avatar on the dashboard.
+```
+
+---
+
+> **This document is the Single Source of Truth for FUNNOVA v1.**  
+> Every development decision — frontend layout, backend query, database schema change — must be validated against these rules.  
+> When in doubt, refer back to the rule that governs it.
+
+---
+
+*FUNNOVA Product Blueprint · Version 1.0 · April 2026*  
+*Designed for Grade 4–5 students · Mathematics & Science · 10 Lessons per Subject*
