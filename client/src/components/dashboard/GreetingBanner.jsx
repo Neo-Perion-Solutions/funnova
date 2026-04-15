@@ -6,9 +6,11 @@ const GreetingBanner = () => {
   const { student } = useAuth();
   const { activeGrade } = useGradeContext();
 
+  const firstName = student?.name ? student.name.split(' ')[0] : 'Explorer';
+
   return (
     <div style={styles.banner}>
-      <h1 style={styles.title}>Hi {student?.name.split(' ')[0]}! 🎉</h1>
+      <h1 style={styles.title}>Hi {firstName}! 🎉</h1>
       <p style={styles.subtitle}>Grade {activeGrade} — Choose a subject to start your adventure!</p>
     </div>
   );
@@ -38,3 +40,4 @@ const styles = {
 };
 
 export default GreetingBanner;
+

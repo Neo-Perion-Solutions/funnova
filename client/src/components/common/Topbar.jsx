@@ -10,7 +10,7 @@ const Topbar = () => {
 
   return (
     <header style={styles.header}>
-      <Link to="/dashboard" style={styles.logoContainer}>
+      <Link to="/student/dashboard" style={styles.logoContainer}>
         <h1 style={styles.logo}>🌟 FUNNOVA</h1>
       </Link>
       

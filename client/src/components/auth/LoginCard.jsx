@@ -19,7 +19,9 @@ const LoginCard = () => {
     try {
       await login(studentId, password);
     } catch (err) {
-      setError('Invalid Student ID or Password ❌');
+      console.error('Login Error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Invalid Student ID or Password';
+      setError(errorMsg + ' ❌');
     }
   };
 

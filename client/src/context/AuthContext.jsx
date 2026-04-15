@@ -12,7 +12,9 @@ export const AuthProvider = ({ children }) => {
     const fetchUser = async () => {
       if (token) {
         try {
-          const user = await authService.getMe();
+          const response = await authService.getMe();
+          // Response is already unwrapped by axios interceptor: { success: true, data: {...} }
+          const user = response.data || response; // Handle both cases
           setStudent(user);
         } catch (err) {
           console.error(err);
@@ -26,6 +28,7 @@ export const AuthProvider = ({ children }) => {
 
   const loginUser = async (student_id, password) => {
     const data = await authService.login(student_id, password);
+    // data is { token, user } from server (already unwrapped by axios + auth.service)
     setToken(data.token);
     setStudent(data.user);
     localStorage.setItem('funnova_token', data.token);
@@ -40,6 +43,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     student,
+    user: student, // alias for admin panel
     token,
     isAuthenticated: !!token,
     login: loginUser,
@@ -51,3 +55,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuthContext = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext);

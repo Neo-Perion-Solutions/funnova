@@ -1,15 +1,19 @@
+/**
+ * routes/auth.routes.js
+ *
+ * Endpoints:
+ *   POST /api/auth/login   — login with login_id + password
+ *   POST /api/auth/logout  — stateless logout
+ *   GET  /api/auth/me      — get current user from JWT
+ */
+
 const express = require('express');
 const router = express.Router();
-const { body } = require('express-validator');
 const authController = require('../controllers/auth.controller');
-const { verifyToken } = require('../middleware/auth');
+const authMw = require('../middleware/authMw');
 
-router.post('/login', [
-  body('student_id').notEmpty().withMessage('Student ID is required'),
-  body('password').notEmpty().withMessage('Password is required')
-], authController.login);
-
-router.post('/logout', verifyToken, authController.logout);
-router.get('/me', verifyToken, authController.getMe);
+router.post('/login', authController.login);
+router.post('/logout', authMw, authController.logout);
+router.get('/me', authMw, authController.getMe);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../lib/axios';
 
 export const getSubjects = async (grade) => {
   const response = await api.get(`/subjects?grade=${grade}`);

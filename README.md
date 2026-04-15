@@ -5,7 +5,7 @@ Welcome to **FUNNOVA**, a vibrant, child-friendly learning adventure designed fo
 ## 📚 Tech Stack
 - **Frontend**: React + Vite + React Router v6 + CSS
 - **Backend**: Node.js + Express
-- **Database**: PostgreSQL (pg)
+- **Database**: Neon Cloud PostgreSQL (pg)
 - **Security**: JWT Authentication + bcryptjs Password Hashing
 
 ---
@@ -14,17 +14,17 @@ Welcome to **FUNNOVA**, a vibrant, child-friendly learning adventure designed fo
 
 ### Prerequisites
 1. Node.js (v16 or higher recommended)
-2. PostgreSQL installed and running
+2. No local PostgreSQL needed — database runs on Neon Cloud
 
-### 1. Database Setup
-1. Create a PostgreSQL database named `funnova_db`.
-2. Open a terminal and run the SQL schema:
+### 1. Database Setup (Neon Cloud)
+1. The database is hosted on **Neon Cloud PostgreSQL** — no local PostgreSQL installation needed.
+2. Run the schema against the Neon database:
    ```bash
-   psql -U postgres -d funnova_db -a -f server/schema.sql
+   psql "postgresql://neondb_owner:npg_QK9jHF8tRiaU@ep-wandering-shape-aneklrr4-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require" -f server/schema.sql
    ```
 3. Run the seed data script:
    ```bash
-   psql -U postgres -d funnova_db -a -f server/seed.sql
+   psql "postgresql://neondb_owner:npg_QK9jHF8tRiaU@ep-wandering-shape-aneklrr4-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require" -f server/seed.sql
    ```
 
 ### 2. Backend Setup
@@ -36,14 +36,10 @@ Welcome to **FUNNOVA**, a vibrant, child-friendly learning adventure designed fo
    ```bash
    npm install
    ```
-3. Your `.env` file is already created. Make sure your PostgreSQL credentials match what is in `server/.env`:
+3. Your `.env` file already contains the Neon connection string. Verify `server/.env`:
    ```env
    PORT=5000
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USER=postgres
-   DB_PASSWORD=yourpassword
-   DB_NAME=funnova_db
+   DATABASE_URL=postgresql://neondb_owner:npg_QK9jHF8tRiaU@ep-wandering-shape-aneklrr4-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
    JWT_SECRET=super_secret_funnova_jwt_key_2024
    JWT_EXPIRES_IN=7d
    ```

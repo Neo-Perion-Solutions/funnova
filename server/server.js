@@ -13,12 +13,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/students', require('./routes/student.routes'));
-app.use('/api/subjects', require('./routes/subject.routes'));
-app.use('/api/lessons', require('./routes/lesson.routes'));
-app.use('/api/questions', require('./routes/question.routes'));
-app.use('/api/games', require('./routes/game.routes'));
-app.use('/api/progress', require('./routes/progress.routes'));
+app.use('/api/student', require('./routes/student.api.routes')); // Phase 4 student APIs
+app.use('/api/admin', require('./routes/admin.routes')); // All admin APIs
 
 // Error Handler
 app.use(errorHandler);

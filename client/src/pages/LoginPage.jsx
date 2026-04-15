@@ -5,14 +5,18 @@ import LoginCard from '../components/auth/LoginCard';
 import FloatingBubbles from '../components/auth/FloatingBubbles';
 
 const LoginPage = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      navigate('/dashboard');
+      if (user?.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/student/dashboard');
+      }
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, user]);
 
   if (loading || isAuthenticated) return null;
 

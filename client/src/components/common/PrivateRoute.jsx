@@ -8,7 +8,7 @@ const PrivateRoute = ({ children }) => {
 
   if (loading) return <LoadingSpinner />;
   
-  return isAuthenticated ? children : <Navigate to="/" />;
+  return isAuthenticated ? children : <Navigate to="/student/login" />;
 };
 
 export default PrivateRoute;

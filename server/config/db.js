@@ -1,20 +1,24 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Neon cloud PostgreSQL connection (uses DATABASE_URL with SSL)
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // Required for Neon TLS connections
+  },
+});
+
+pool.on('connect', () => {
+  console.log('✅ Connected to Neon PostgreSQL cloud database');
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('❌ Unexpected error on idle DB client', err);
   process.exit(-1);
 });
 
 module.exports = {
   query: (text, params) => pool.query(text, params),
-  pool
+  pool,
 };
