@@ -17,9 +17,9 @@ const avatarOptions = [
 ];
 
 const studentSchema = z.object({
-  login_id: z.string().optional(),
+  login_id: z.string().min(3, 'Login ID must be at least 3 characters').optional().or(z.literal('')),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
   grade: z.string().min(1, 'Grade is required'),
   section: z.string().min(1, 'Section is required').max(5, 'Section too long'),
@@ -96,6 +96,15 @@ const StudentModal = ({ isOpen, onClose, onSave, student = null, isLoading = fal
             <label className="text-xs font-semibold text-gray-700">Login ID</label>
             <p className="text-lg font-mono font-bold text-indigo-600 mt-1">{student.login_id}</p>
           </div>
+        )}
+
+        {!isEdit && (
+          <Input
+            label="Login ID"
+            placeholder="e.g. STUDENT-001"
+            error={errors.login_id?.message}
+            {...register('login_id')}
+          />
         )}
 
         <div className="flex gap-4">
