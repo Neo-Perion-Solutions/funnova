@@ -72,8 +72,8 @@ exports.createStudent = async (req, res, next) => {
 
     const hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      `INSERT INTO students (name, login_id, password_hash, role, grade, section, avatar_url)
-       VALUES ($1, $2, $3, 'student', $4, $5, $6)
+      `INSERT INTO students (name, login_id, password_hash, grade, section, avatar_url)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, name, login_id, grade, section, avatar_url`,
       [name, login_id, hash, grade, section || null, avatar_url || null]
     );

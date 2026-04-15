@@ -228,3 +228,72 @@ exports.deleteAdmin = async (req, res, next) => {
     next(err);
   }
 };
+
+// POST /api/admin/impersonate/:studentId — Create impersonation token
+// Only main_admin can impersonate students
+exports.impersonateStudent = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const adminId = req.user.id;
+
+    // Verify admin is main_admin
+    if (req.user.role !== 'main_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only main_admin can impersonate students',
+      });
+    }
+
+    // Get student details
+    const studentResult = await pool.query(
+      `SELECT id, login_id, name, grade, section, avatar_url, lessons_completed, avg_score, streak_days
+       FROM students WHERE id = $1`,
+      [studentId]
+    );
+
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found',
+      });
+    }
+
+    const student = studentResult.rows[0];
+
+    // Generate impersonation JWT token
+    const payload = {
+      id: adminId,
+      role: req.user.role,
+      type: 'admin',
+      impersonatingStudentId: student.id,
+      impersonatingStudentGrade: student.grade,
+      impersonatingStudentName: student.name,
+      isImpersonating: true,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+    });
+
+    return res.json({
+      success: true,
+      message: 'Impersonation token created successfully',
+      data: {
+        token,
+        impersonatedStudent: {
+          id: student.id,
+          login_id: student.login_id,
+          name: student.name,
+          grade: student.grade,
+          section: student.section,
+          avatar_url: student.avatar_url,
+          lessons_completed: student.lessons_completed,
+          avg_score: student.avg_score,
+          streak_days: student.streak_days,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

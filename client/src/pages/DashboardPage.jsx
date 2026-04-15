@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Topbar from '../components/common/Topbar';
+import ImpersonationBanner from '../components/common/ImpersonationBanner';
 import GreetingBanner from '../components/dashboard/GreetingBanner';
 import SubjectCard from '../components/dashboard/SubjectCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import StreakWidget from '../features/dashboard/components/StreakWidget';
 import ProgressRing from '../features/dashboard/components/ProgressRing';
 import ContinueButton from '../features/dashboard/components/ContinueButton';
+import GamifiedDashboardCard from '../components/student/dashboard/GamifiedDashboardCard';
+import XPIndicator from '../components/student/gamification/XPIndicator';
+import LevelBadge from '../components/student/gamification/LevelBadge';
+import CelebrationModal from '../components/student/achievement/CelebrationModal';
 import { useGradeContext } from '../context/GradeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useFetch } from '../hooks/useFetch';
@@ -19,6 +24,10 @@ const DashboardPage = () => {
   const [progressPercentage, setProgressPercentage] = useState(0);
   const [currentLessonId, setCurrentLessonId] = useState(null);
   const [currentLessonTitle, setCurrentLessonTitle] = useState(null);
+  const [level, setLevel] = useState(5);
+  const [currentXP, setCurrentXP] = useState(2400);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState({});
 
   const { data: subjects, loading } = useFetch(
     () => getSubjects(activeGrade),
@@ -37,12 +46,15 @@ const DashboardPage = () => {
           const totalLessonsInGrade = subjects?.reduce((sum, s) => sum + (s.lesson_count || 0), 0) || 1;
           const percentage = Math.round((lessonsCompleted / totalLessonsInGrade) * 100);
           setProgressPercentage(Math.min(percentage, 100));
+
+          // Set gamification data (from API in future)
+          setLevel(progressData.level || 5);
+          setCurrentXP(progressData.currentXP || 2400);
         }
 
         // Fetch current lesson if available
         if (student?.current_lesson_id) {
           setCurrentLessonId(student.current_lesson_id);
-          // In a real app, fetch the lesson title from API
           setCurrentLessonTitle('Continue Learning');
         }
       } catch (err) {
@@ -56,33 +68,27 @@ const DashboardPage = () => {
   }, [student, subjects]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
+      <ImpersonationBanner />
       <Topbar />
 
       <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl space-y-6">
+        <div className="mx-auto max-w-7xl space-y-6">
           <GreetingBanner />
 
-          {/* Dashboard Stats Section */}
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {/* Top Stats Row - Gamification header */}
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            {/* Level Badge */}
+            <LevelBadge level={level} xp={currentXP} />
+
+            {/* XP Indicator */}
+            <XPIndicator currentXP={currentXP} xpToNextLevel={3000} level={level} />
+
             {/* Streak Widget */}
-            <div>
-              <StreakWidget streak={streak} />
-            </div>
+            <StreakWidget streak={streak} />
 
             {/* Progress Ring */}
-            <div>
-              <ProgressRing percentage={progressPercentage} label="Grade Progress" />
-            </div>
-
-            {/* Stats Summary */}
-            <div className="flex flex-col gap-2 rounded-lg border border-indigo-200 bg-linear-to-br from-indigo-50 to-purple-50 p-4 sm:p-6">
-              <p className="text-xs font-medium text-gray-600">Quick Stats</p>
-              <div className="space-y-1">
-                <p className="text-lg sm:text-xl font-bold text-indigo-600">Grade {student?.grade}</p>
-                <p className="text-xs sm:text-sm text-gray-600">Section: {student?.section || 'A'}</p>
-              </div>
-            </div>
+            <ProgressRing percentage={progressPercentage} label="Grade Progress" />
           </div>
 
           {/* Continue Button */}
@@ -93,21 +99,37 @@ const DashboardPage = () => {
             />
           )}
 
-          {/* Subjects Grid */}
+          {/* Subjects Grid - With Gamified Cards */}
           <div>
-            <h2 className="mb-4 text-lg sm:text-xl font-bold text-gray-900">Subjects</h2>
+            <h2 className="mb-4 text-lg sm:text-xl font-bold text-gray-900">📚 Learning Subjects</h2>
             {loading ? (
               <LoadingSpinner />
             ) : (
               <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {subjects && subjects.map((sub) => (
-                  <SubjectCard key={sub.id} subject={sub} />
+                  <GamifiedDashboardCard
+                    key={sub.id}
+                    subject={sub}
+                    unit_count={sub.unit_count || 0}
+                    lesson_count={sub.lesson_count || 0}
+                    completedLessons={sub.completed_lessons || 0}
+                  />
                 ))}
               </div>
             )}
           </div>
         </div>
       </main>
+
+      {/* Celebration Modal */}
+      <CelebrationModal
+        isOpen={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        title={celebrationData.title || 'Great Work!'}
+        message={celebrationData.message || 'Keep up the amazing progress!'}
+        type={celebrationData.type || 'achievement'}
+        xpGained={celebrationData.xpGained || 0}
+      />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { queryClient } from './lib/queryClient';
 // Student app providers & pages
 import { AuthProvider } from './context/AuthContext';
 import { GradeProvider } from './context/GradeContext';
+import { ImpersonationProvider } from './context/ImpersonationContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -31,83 +32,85 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <GradeProvider>
-            <Routes>
-              {/* ======= STUDENT ROUTES ======= */}
-              <Route path="/" element={<Navigate to="/student/login" replace />} />
-              <Route path="/student" element={<Navigate to="/student/login" replace />} />
-              <Route path="/student/login" element={<LoginPage />} />
-              <Route path="/dashboard" element={<Navigate to="/student/dashboard" replace />} />
+        <ImpersonationProvider>
+          <AuthProvider>
+            <GradeProvider>
+              <Routes>
+                {/* ======= STUDENT ROUTES ======= */}
+                <Route path="/" element={<Navigate to="/student/login" replace />} />
+                <Route path="/student" element={<Navigate to="/student/login" replace />} />
+                <Route path="/student/login" element={<LoginPage />} />
+                <Route path="/dashboard" element={<Navigate to="/student/dashboard" replace />} />
 
-              <Route
-                path="/student/dashboard"
-                element={
-                  <PrivateRoute>
-                    <DashboardPage />
-                  </PrivateRoute>
-                }
-              />
+                <Route
+                  path="/student/dashboard"
+                  element={
+                    <PrivateRoute>
+                      <DashboardPage />
+                    </PrivateRoute>
+                  }
+                />
 
-              <Route
-                path="/subject/:id"
-                element={
-                  <PrivateRoute>
-                    <SubjectPage />
-                  </PrivateRoute>
-                }
-              />
+                <Route
+                  path="/subject/:id"
+                  element={
+                    <PrivateRoute>
+                      <SubjectPage />
+                    </PrivateRoute>
+                  }
+                />
 
-              <Route
-                path="/tracker"
-                element={
-                  <PrivateRoute>
-                    <TrackerPage />
-                  </PrivateRoute>
-                }
-              />
+                <Route
+                  path="/tracker"
+                  element={
+                    <PrivateRoute>
+                      <TrackerPage />
+                    </PrivateRoute>
+                  }
+                />
 
-              <Route
-                path="/student/lesson/:lessonId"
-                element={
-                  <PrivateRoute>
-                    <LessonPage />
-                  </PrivateRoute>
-                }
-              />
+                <Route
+                  path="/student/lesson/:lessonId"
+                  element={
+                    <PrivateRoute>
+                      <LessonPage />
+                    </PrivateRoute>
+                  }
+                />
 
-              <Route
-                path="/student/profile"
-                element={
-                  <PrivateRoute>
-                    <StudentProfilePage />
-                  </PrivateRoute>
-                }
-              />
+                <Route
+                  path="/student/profile"
+                  element={
+                    <PrivateRoute>
+                      <StudentProfilePage />
+                    </PrivateRoute>
+                  }
+                />
 
-              {/* ======= ADMIN ROUTES ======= */}
-              <Route path="/admin/login" element={<AdminLoginPage />} />
+                {/* ======= ADMIN ROUTES ======= */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
 
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin" element={<AdminDashboardPage />} />
-                  <Route path="/admin/students" element={<StudentsPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route path="/admin" element={<AdminDashboardPage />} />
+                    <Route path="/admin/students" element={<StudentsPage />} />
 
-                  {/* Curriculum Manager - Drill Down Routes */}
-                  <Route path="/admin/curriculum" element={<CurriculumPage />} />
-                  <Route path="/admin/curriculum/grade/:gradeId" element={<CurriculumPage />} />
-                  <Route path="/admin/curriculum/grade/:gradeId/subject/:subjectId" element={<CurriculumPage />} />
-                  <Route path="/admin/curriculum/grade/:gradeId/subject/:subjectId/unit/:unitId" element={<CurriculumPage />} />
-                  <Route path="/admin/curriculum/grade/:gradeId/subject/:subjectId/unit/:unitId/lesson/:lessonId" element={<CurriculumPage />} />
+                    {/* Curriculum Manager - Drill Down Routes */}
+                    <Route path="/admin/curriculum" element={<CurriculumPage />} />
+                    <Route path="/admin/curriculum/grade/:gradeId" element={<CurriculumPage />} />
+                    <Route path="/admin/curriculum/grade/:gradeId/subject/:subjectId" element={<CurriculumPage />} />
+                    <Route path="/admin/curriculum/grade/:gradeId/subject/:subjectId/unit/:unitId" element={<CurriculumPage />} />
+                    <Route path="/admin/curriculum/grade/:gradeId/subject/:subjectId/unit/:unitId/lesson/:lessonId" element={<CurriculumPage />} />
 
-                  <Route path="/admin/questions" element={<QuestionsPage />} />
-                  <Route path="/admin/admin-users" element={<AdminUsersPage />} />
-                  <Route path="/admin/profile" element={<ProfilePage />} />
+                    <Route path="/admin/questions" element={<QuestionsPage />} />
+                    <Route path="/admin/admin-users" element={<AdminUsersPage />} />
+                    <Route path="/admin/profile" element={<ProfilePage />} />
+                  </Route>
                 </Route>
-              </Route>
-            </Routes>
-          </GradeProvider>
-        </AuthProvider>
+              </Routes>
+            </GradeProvider>
+          </AuthProvider>
+        </ImpersonationProvider>
 
         {/* Global toast notifications */}
         <Toaster position="top-right" richColors closeButton />

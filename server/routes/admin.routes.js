@@ -123,6 +123,9 @@ router.get('/admin-users/:id', mainAdminOnly, adminUsersController.getAdmin);
 router.put('/admin-users/:id', mainAdminOnly, adminUsersController.updateAdmin);
 router.delete('/admin-users/:id', mainAdminOnly, adminUsersController.deleteAdmin);
 
+// -- ADMIN IMPERSONATION (main_admin only) --
+router.post('/impersonate/:studentId', mainAdminOnly, adminUsersController.impersonateStudent);
+
 // -- PLATFORM STATS --
 router.get('/stats', statsController.getStats);
 
