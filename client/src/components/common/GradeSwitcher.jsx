@@ -1,23 +1,20 @@
 import React from 'react';
 import { useGradeContext } from '../../context/GradeContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const GradeSwitcher = () => {
-  const { activeGrade, setActiveGrade } = useGradeContext();
+  const { activeGrade } = useGradeContext();
+  const { student } = useAuth();
+
+  // Students can only view their assigned grade - no switching allowed
+  // Extract grade number from grade string (e.g., "3" from "Grade 3")
+  const gradeNumber = student?.grade ? String(student.grade).replace('Grade ', '') : activeGrade;
 
   return (
     <div style={styles.container}>
-      <button 
-        style={{ ...styles.btn, ...(activeGrade === 4 ? styles.active : styles.inactive) }}
-        onClick={() => setActiveGrade(4)}
-      >
-        Grade 4
-      </button>
-      <button 
-        style={{ ...styles.btn, ...(activeGrade === 5 ? styles.active : styles.inactive) }}
-        onClick={() => setActiveGrade(5)}
-      >
-        Grade 5
-      </button>
+      <span style={styles.gradeDisplay}>
+        📚 Grade {gradeNumber}
+      </span>
     </div>
   );
 };
@@ -25,28 +22,20 @@ const GradeSwitcher = () => {
 const styles = {
   container: {
     display: 'flex',
-    background: '#f0f0f0',
-    borderRadius: 'var(--radius-full)',
-    padding: '4px',
-    gap: '4px'
-  },
-  btn: {
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: '8px 24px',
     borderRadius: 'var(--radius-full)',
+    background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1))',
+    border: '2px solid rgba(139, 92, 246, 0.2)',
+  },
+  gradeDisplay: {
     fontWeight: 'bold',
     fontSize: '1rem',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease'
-  },
-  active: {
-    background: 'linear-gradient(135deg, var(--purple), var(--pink))',
-    color: 'white',
-    boxShadow: 'var(--shadow-sm)'
-  },
-  inactive: {
-    background: 'transparent',
-    color: '#666'
+    color: '#1E40AF',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   }
 };
 
