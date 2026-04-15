@@ -28,16 +28,23 @@ export const useLessonQuestionMutations = () => {
 
   const create = useMutation({
     mutationFn: (data) => {
+      // Transform form data into API format
+      const options = {};
+      if (data.option_a) options.A = data.option_a;
+      if (data.option_b) options.B = data.option_b;
+      if (data.option_c) options.C = data.option_c;
+      if (data.option_d) options.D = data.option_d;
+
       // Wrap single question in bulk format expected by server
       return questionsApi.create({
         lesson_id: data.lesson_id,
         questions: [{
-          section_id: data.section_id || 1, // Default to first section if not provided
+          section_id: data.section_id || 1,
           type: data.type,
           question_text: data.question_text,
           correct_answer: data.correct_answer,
-          options: data.options,
-          question_order: data.question_order || 1,
+          options: Object.keys(options).length > 0 ? options : null,
+          question_order: data.question_order ?? 1,
         }],
       });
     },
@@ -55,7 +62,28 @@ export const useLessonQuestionMutations = () => {
       if (!questions) {
         return Promise.reject(new Error('Questions not loaded'));
       }
-      const updated = questions.map(q => q.id === id ? { ...q, ...data } : q);
+
+      // Transform form data into API format
+      const options = {};
+      if (data.option_a) options.A = data.option_a;
+      if (data.option_b) options.B = data.option_b;
+      if (data.option_c) options.C = data.option_c;
+      if (data.option_d) options.D = data.option_d;
+
+      const updated = questions.map(q => {
+        if (q.id === id) {
+          return {
+            ...q,
+            type: data.type || q.type,
+            question_text: data.question_text || q.question_text,
+            correct_answer: data.correct_answer || q.correct_answer,
+            options: Object.keys(options).length > 0 ? options : q.options,
+            question_order: q.question_order, // Never change question_order through edit
+          };
+        }
+        return q;
+      });
+
       return questionsApi.updateByLesson(lessonId, { questions: updated });
     },
     onSuccess: () => {
