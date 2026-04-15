@@ -68,53 +68,82 @@ const DashboardPage = () => {
   }, [student, subjects]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <ImpersonationBanner />
       <Topbar />
 
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+      <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-8">
+          {/* Welcome Section */}
           <GreetingBanner />
 
-          {/* Top Stats Row - Gamification header */}
+          {/* Gamification Stats Row - 4 Column Grid */}
           <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             {/* Level Badge */}
-            <LevelBadge level={level} xp={currentXP} />
+            <div className="transform transition hover:scale-105">
+              <LevelBadge level={level} xp={currentXP} />
+            </div>
 
             {/* XP Indicator */}
-            <XPIndicator currentXP={currentXP} xpToNextLevel={3000} level={level} />
+            <div className="transform transition hover:scale-105">
+              <XPIndicator currentXP={currentXP} xpToNextLevel={3000} level={level} />
+            </div>
 
             {/* Streak Widget */}
-            <StreakWidget streak={streak} />
+            <div className="transform transition hover:scale-105">
+              <StreakWidget streak={streak} />
+            </div>
 
             {/* Progress Ring */}
-            <ProgressRing percentage={progressPercentage} label="Grade Progress" />
+            <div className="transform transition hover:scale-105">
+              <ProgressRing percentage={progressPercentage} label="Grade Progress" />
+            </div>
           </div>
 
-          {/* Continue Button */}
+          {/* Continue Learning Section */}
           {currentLessonId && (
-            <ContinueButton
-              currentLessonId={currentLessonId}
-              currentLessonTitle={currentLessonTitle}
-            />
+            <div className="mt-8">
+              <ContinueButton
+                currentLessonId={currentLessonId}
+                currentLessonTitle={currentLessonTitle}
+              />
+            </div>
           )}
 
-          {/* Subjects Grid - With Gamified Cards */}
-          <div>
-            <h2 className="mb-4 text-lg sm:text-xl font-bold text-gray-900">📚 Learning Subjects</h2>
+          {/* Learning Subjects Section - Enhanced */}
+          <div className="mt-12">
+            {/* Section Header */}
+            <div className="mb-6 flex items-center gap-3">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                📚 Learning Subjects
+              </h2>
+              <span className="hidden sm:inline-flex px-4 py-1 bg-primary/10 text-primary font-semibold rounded-full text-sm">
+                {subjects?.length || 0} Subjects
+              </span>
+            </div>
+
+            {/* Subjects Grid - Responsive */}
             {loading ? (
-              <LoadingSpinner />
-            ) : (
-              <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {subjects && subjects.map((sub) => (
-                  <GamifiedDashboardCard
-                    key={sub.id}
-                    subject={sub}
-                    unit_count={sub.unit_count || 0}
-                    lesson_count={sub.lesson_count || 0}
-                    completedLessons={sub.completed_lessons || 0}
-                  />
+              <div className="flex justify-center py-16">
+                <LoadingSpinner />
+              </div>
+            ) : subjects && subjects.length > 0 ? (
+              <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {subjects.map((sub) => (
+                  <div key={sub.id} className="transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                    <GamifiedDashboardCard
+                      subject={sub}
+                      unit_count={sub.unit_count || 0}
+                      lesson_count={sub.lesson_count || 0}
+                      completedLessons={sub.completed_lessons || 0}
+                    />
+                  </div>
                 ))}
+              </div>
+            ) : (
+              <div className="py-16 text-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
+                <p className="text-xl text-gray-600 mb-2">📭 No subjects available yet</p>
+                <p className="text-sm text-gray-500">Check back soon for new content!</p>
               </div>
             )}
           </div>
