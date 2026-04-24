@@ -10,31 +10,48 @@ const GreetingBanner = () => {
 
   return (
     <div style={styles.banner}>
-      <h1 style={styles.title}>Hi {firstName}! 🎉</h1>
-      <p style={styles.subtitle}>Grade {activeGrade} — Choose a subject to start your adventure!</p>
+      <div style={styles.kicker}>Grade {activeGrade}</div>
+      <h1 style={styles.title}>Welcome back, {firstName}</h1>
+      <p style={styles.subtitle}>Choose a subject to continue your learning journey.</p>
     </div>
   );
 };
 
 const styles = {
   banner: {
-    background: 'white',
-    padding: '30px',
-    borderRadius: 'var(--radius-xl)',
-    boxShadow: 'var(--shadow-md)',
-    marginBottom: '30px',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.96))',
+    padding: '28px 32px',
+    borderRadius: '28px',
+    border: '1px solid rgba(148, 163, 184, 0.16)',
+    boxShadow: '0 16px 40px rgba(15, 23, 42, 0.06)',
+    marginBottom: '28px',
     animation: 'slideDown 0.5s ease',
-    textAlign: 'center'
+    textAlign: 'left'
+  },
+  kicker: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: '9999px',
+    border: '1px solid rgba(37, 99, 235, 0.14)',
+    background: 'rgba(37, 99, 235, 0.06)',
+    color: '#2563EB',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    padding: '6px 12px',
+    marginBottom: '14px'
   },
   title: {
     fontSize: '2rem',
-    color: 'var(--dark)',
+    lineHeight: 1.1,
+    color: '#0f172a',
     marginBottom: '10px'
   },
   subtitle: {
-    fontSize: '1.2rem',
-    color: '#666',
-    fontWeight: 'bold',
+    fontSize: '1rem',
+    color: '#64748b',
+    fontWeight: '500',
     margin: 0
   }
 };

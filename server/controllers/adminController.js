@@ -203,14 +203,23 @@ exports.getStudentProgress = async (req, res, next) => {
 
 exports.getSubjects = async (req, res, next) => {
   try {
-    const result = await pool.query(`
+    const { grade } = req.query;
+    let query = `
       SELECT s.*, COUNT(DISTINCT u.id) AS unit_count,
              COUNT(DISTINCT l.id) FILTER (WHERE l.is_deleted = false) AS lesson_count
       FROM subjects s
       LEFT JOIN units u ON u.subject_id = s.id
-      LEFT JOIN lessons l ON l.unit_id = u.id
-      GROUP BY s.id
-      ORDER BY s.grade ASC, s.id ASC`);
+      LEFT JOIN lessons l ON l.unit_id = u.id`;
+    
+    const values = [];
+    if (grade) {
+      query += ` WHERE s.grade = $1`;
+      values.push(grade);
+    }
+    
+    query += ` GROUP BY s.id ORDER BY s.grade ASC, s.id ASC`;
+    
+    const result = await pool.query(query, values);
     return res.json({ success: true, data: result.rows });
   } catch (err) {
     next(err);
@@ -584,9 +593,33 @@ exports.updateQuestions = async (req, res, next) => {
     await client.query('BEGIN');
     const { lessonId } = req.params;
     const { questions } = req.body;
-    if (!Array.isArray(questions) || questions.length === 0) {
+    
+    // We allow an empty array if they want to clear questions out
+    if (!Array.isArray(questions)) {
       await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: 'questions array is required' });
+    }
+
+    // Upsert a default 'Assessment' section for this lesson
+    let sectionResult = await client.query(
+      `SELECT id FROM sections WHERE lesson_id = $1 AND title = 'Assessment' AND is_deleted = false LIMIT 1`,
+      [lessonId]
+    );
+
+    let sectionId;
+    if (sectionResult.rows.length === 0) {
+      const maxRes = await client.query(
+        `SELECT COALESCE(MAX(section_order), 0) AS max_order FROM sections WHERE lesson_id = $1 AND is_deleted = false`,
+        [lessonId]
+      );
+      const section_order = maxRes.rows[0].max_order + 1;
+      const newSection = await client.query(
+        `INSERT INTO sections (lesson_id, title, type, section_order) VALUES ($1, $2, $3, $4) RETURNING id`,
+        [lessonId, 'Assessment', 'quiz', section_order]
+      );
+      sectionId = newSection.rows[0].id;
+    } else {
+      sectionId = sectionResult.rows[0].id;
     }
 
     // Delete all existing questions for this lesson then re-insert
@@ -597,13 +630,15 @@ exports.updateQuestions = async (req, res, next) => {
     );
 
     const inserted = [];
+    let order = 1;
     for (const q of questions) {
       const r = await client.query(
         `INSERT INTO questions (section_id, type, question_text, options, correct_answer, question_order)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [q.section_id, q.type, q.question_text, q.options ? JSON.stringify(q.options) : null, q.correct_answer, q.question_order]
+        [sectionId, q.type, q.question_text, q.options ? JSON.stringify(q.options) : null, q.correct_answer, order]
       );
       inserted.push(r.rows[0]);
+      order++;
     }
     await client.query('COMMIT');
     return res.json({ success: true, data: inserted });

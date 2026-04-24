@@ -60,20 +60,51 @@ const UnitCards = ({ gradeId, subjectId }) => {
     });
   };
 
+  const modals = (
+    <>
+      <UnitModal
+        isOpen={activeModal === 'addUnit' || activeModal === 'editUnit'}
+        onClose={closeModal}
+        onSave={handleSave}
+        unit={activeModal === 'editUnit' ? modalData : null}
+        isLoading={create.isPending || update.isPending}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={handleDelete}
+        title="Delete Unit?"
+        message="This will delete the unit and all its lessons. This action cannot be undone."
+        confirmLabel="Delete"
+        isDangerous
+        isLoading={remove.isPending}
+      />
+    </>
+  );
+
   if (isLoading) {
-    return <div className="text-center py-8">Loading units...</div>;
+    return (
+      <>
+        <div className="text-center py-8">Loading units...</div>
+        {modals}
+      </>
+    );
   }
 
   if (!units || units.length === 0) {
     return (
-      <div className="space-y-6">
-        <EmptyState
-          icon={Plus}
-          title="No Units Yet"
-          description="Create your first unit to organize lessons for this subject."
-          action={<Button onClick={() => openModal('addUnit')}>Add Unit</Button>}
-        />
-      </div>
+      <>
+        <div className="space-y-6">
+          <EmptyState
+            icon={Plus}
+            title="No Units Yet"
+            description="Create your first unit to organize lessons for this subject."
+            action={<Button onClick={() => openModal('addUnit')}>Add Unit</Button>}
+          />
+        </div>
+        {modals}
+      </>
     );
   }
 
@@ -175,26 +206,7 @@ const UnitCards = ({ gradeId, subjectId }) => {
         ))}
       </div>
 
-      {/* Modals */}
-      <UnitModal
-        isOpen={activeModal === 'addUnit' || activeModal === 'editUnit'}
-        onClose={closeModal}
-        onSave={handleSave}
-        unit={activeModal === 'editUnit' ? modalData : null}
-        isLoading={create.isPending || update.isPending}
-      />
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        onConfirm={handleDelete}
-        title="Delete Unit?"
-        message="This will delete the unit and all its lessons. This action cannot be undone."
-        confirmLabel="Delete"
-        isDangerous
-        isLoading={remove.isPending}
-      />
+      {modals}
     </div>
   );
 };

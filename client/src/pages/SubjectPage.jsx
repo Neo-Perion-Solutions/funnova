@@ -1,55 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Topbar from '../components/common/Topbar';
-import BackButton from '../components/common/BackButton';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LessonRoadmap from '../features/subject/components/LessonRoadmap';
 import { useFetch } from '../hooks/useFetch';
-import { getLessons } from '../services/lesson.service';
+import { studentService } from '../services/student.service';
 import { useAuth } from '../hooks/useAuth';
-import { progressService } from '../services/progress.service';
 
 const SubjectPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { student } = useAuth();
-  const [completedLessons, setCompletedLessons] = useState([]);
-  const [subjectName, setSubjectName] = useState('Subject');
-
-  const { data: lessons, loading } = useFetch(
-    () => getLessons(id),
+  
+  const { data: subjectResponse, loading, error } = useFetch(
+    () => studentService.getSubjectUnits(id),
     [id]
   );
 
-  // Fetch progress data to determine which lessons are completed
-  useEffect(() => {
-    const fetchProgressData = async () => {
-      try {
-        if (student?.id) {
-          const progressData = await progressService.getStudentScores();
-
-          // Find completed lessons in this subject
-          if (progressData && Array.isArray(progressData)) {
-            const subjectScores = progressData.find(s => s.subject_id === parseInt(id));
-            if (subjectScores && subjectScores.completed_lessons) {
-              setCompletedLessons(subjectScores.completed_lessons);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load progress data:', err);
-      }
-    };
-
-    fetchProgressData();
-  }, [student?.id, id]);
-
-  // Extract subject name from first lesson or use default
-  useEffect(() => {
-    if (lessons && lessons.length > 0 && lessons[0].subject_name) {
-      setSubjectName(lessons[0].subject_name);
-    }
-  }, [lessons]);
+  const subjectData = subjectResponse?.data;
+  const subjectName = subjectData?.subject?.name || 'Subject';
+  const units = subjectData?.units || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -70,12 +40,17 @@ const SubjectPage = () => {
 
           {/* Content */}
           {loading ? (
-            <LoadingSpinner />
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-red-600">
+              <p>{error}</p>
+            </div>
           ) : (
             <LessonRoadmap
-              lessons={lessons}
+              units={units}
               currentLessonId={student?.current_lesson_id}
-              completedLessonIds={completedLessons}
             />
           )}
         </div>

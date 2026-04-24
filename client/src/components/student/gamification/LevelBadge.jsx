@@ -33,37 +33,39 @@ export const LevelBadge = ({
   if (compact) {
     return (
       <div className={clsx(
-        'flex items-center gap-1 bg-gradient-to-r px-3 py-1 rounded-full text-white font-bold',
+        'flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-900 shadow-sm',
         colorClass,
         className
       )}>
-        <Star className="w-4 h-4" />
-        <span className="text-sm">{level}</span>
+        <Star className="w-4 h-4 text-amber-500" />
+        <span className="text-sm">Level {level}</span>
       </div>
     );
   }
 
   return (
     <div className={clsx(
-      'bg-gradient-to-br rounded-lg p-4 text-white shadow-lg',
+      'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm',
       colorClass,
       className
     )}>
-      <div className="flex items-start justify-between mb-3">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Award className="w-6 h-6" />
+          <div className="rounded-xl bg-slate-900 p-2 text-white shadow-sm">
+            <Award className="w-5 h-5" />
+          </div>
           <div>
-            <p className="text-xs font-semibold opacity-90">Current Level</p>
-            <p className="text-2xl font-bold">{level}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Current Level</p>
+            <p className="text-2xl font-bold tracking-tight text-slate-900">{level}</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white/20 rounded-lg px-3 py-1 inline-block mb-3">
-        <span className="text-sm font-semibold">{tier}</span>
+      <div className="mb-4 inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+        <span className="text-sm font-semibold text-slate-700">{tier}</span>
       </div>
 
-      <p className="text-xs opacity-90">
+      <p className="text-sm text-slate-500">
         Keep learning to unlock new levels!
       </p>
     </div>

@@ -128,7 +128,7 @@ exports.getHome = async (req, res, next) => {
     const studentRes = await client.query(
       `SELECT id, name, login_id, grade, section, avatar_url,
               lessons_completed, avg_score, created_at
-       FROM students WHERE id = $1 AND role = 'student'`,
+       FROM students WHERE id = $1`,
       [studentId]
     );
     if (studentRes.rows.length === 0) {
@@ -607,6 +607,57 @@ exports.submitLesson = async (req, res, next) => {
     });
   } catch (err) {
     await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+// ===========================================================================
+// POST /api/student/games/:gameId/score
+// Body: { score, accuracy }
+// Upserts into game_scores for the authenticated student
+// ===========================================================================
+exports.submitGameScore = async (req, res, next) => {
+  const studentId = req.user.id;
+  const gameId = parseInt(req.params.gameId, 10);
+  const { score, accuracy } = req.body;
+
+  if (!score && score !== 0) {
+    return res.status(400).json({ success: false, message: 'score is required' });
+  }
+  if (!accuracy && accuracy !== 0) {
+    return res.status(400).json({ success: false, message: 'accuracy is required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    // Verify game exists and is active
+    const gameRes = await client.query(
+      `SELECT g.id, g.lesson_id FROM games g WHERE g.id = $1 AND g.is_active = true`,
+      [gameId]
+    );
+    if (gameRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Game not found or inactive' });
+    }
+
+    // Upsert game score — update if student replays
+    const result = await client.query(
+      `INSERT INTO game_scores (student_id, game_id, total_score, accuracy_pct)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (student_id, game_id)
+       DO UPDATE SET total_score  = GREATEST(game_scores.total_score, EXCLUDED.total_score),
+                     accuracy_pct = GREATEST(game_scores.accuracy_pct, EXCLUDED.accuracy_pct),
+                     played_at    = NOW()
+       RETURNING *`,
+      [studentId, gameId, Math.round(score), Math.round(accuracy)]
+    );
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (err) {
     next(err);
   } finally {
     client.release();

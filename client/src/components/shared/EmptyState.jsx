@@ -9,7 +9,7 @@ const EmptyState = ({ icon: Icon, title, description, action }) => {
       <h3 className="text-lg font-semibold leading-tight text-gray-950">
         {title}
       </h3>
-      <p className="max-w-[280px] text-sm text-gray-500 mt-2 mb-6">
+      <p className="max-w-70 text-sm text-gray-500 mt-2 mb-6">
         {description}
       </p>
       {action && (

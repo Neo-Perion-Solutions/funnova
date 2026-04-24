@@ -30,30 +30,37 @@ const QuestionsPage = () => {
   }, [subjects, subjectId]);
 
   const onHandleSave = async (quizData) => {
-    // Transform flat RHF object to the atomic array backend expects
-    const payload = [
-      {
+    const payload = [];
+
+    quizData.mcq.forEach(q => {
+      payload.push({
         type: 'mcq',
-        question_text: quizData.mcq.question_text,
-        correct_answer: quizData.mcq.correct_answer,
+        question_text: q.question_text,
+        correct_answer: q.correct_answer,
         options: {
-          A: quizData.mcq.option_a,
-          B: quizData.mcq.option_b,
-          C: quizData.mcq.option_c,
-          D: quizData.mcq.option_d,
+          A: q.option_a,
+          B: q.option_b,
+          C: q.option_c,
+          D: q.option_d,
         }
-      },
-      {
+      });
+    });
+
+    quizData.fill_blank.forEach(q => {
+      payload.push({
         type: 'fill_blank',
-        question_text: quizData.fill_blank.question_text,
-        correct_answer: quizData.fill_blank.correct_answer,
-      },
-      {
+        question_text: q.question_text,
+        correct_answer: q.correct_answer,
+      });
+    });
+
+    quizData.true_false.forEach(q => {
+      payload.push({
         type: 'true_false',
-        question_text: quizData.true_false.question_text,
-        correct_answer: quizData.true_false.correct_answer,
-      }
-    ];
+        question_text: q.question_text,
+        correct_answer: q.correct_answer,
+      });
+    });
 
     await saveQuestions.mutateAsync({ 
       lessonId: modalData.id, 
@@ -65,11 +72,11 @@ const QuestionsPage = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <PageHeader
-        title="Assessment: Atomic Quizzes"
+        title="Assessment Builder"
         action={
           <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-700">
             <HelpCircle size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">3 Questions Per Lesson</span>
+            <span className="text-xs font-bold uppercase tracking-widest">Multi-Question Quizzes</span>
           </div>
         }
       />

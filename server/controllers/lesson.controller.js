@@ -2,24 +2,40 @@ const db = require('../config/db');
 const { validationResult } = require('express-validator');
 
 exports.getLessons = async (req, res, next) => {
-  const { subject_id, student_id } = req.query;
+  const { subject_id, unit_id, student_id } = req.query;
   const targetStudentId = student_id || (req.user && req.user.id);
-  
+
   try {
-    let query = 'SELECT * FROM lessons';
+    let query = 'SELECT l.* FROM lessons l';
     const params = [];
+    const conditions = [];
+
+    // If filtering by subject, join with units and subjects
     if (subject_id) {
-      query += ' WHERE subject_id = $1';
+      query += ' JOIN units u ON l.unit_id = u.id';
+      conditions.push(`u.subject_id = $${params.length + 1}`);
       params.push(subject_id);
     }
-    query += ' ORDER BY lesson_order';
+
+    // If filtering by unit, join with units
+    if (unit_id) {
+      if (!subject_id) query += ' JOIN units u ON l.unit_id = u.id';
+      conditions.push(`u.id = $${params.length + 1}`);
+      params.push(unit_id);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY l.lesson_order';
     const result = await db.query(query, params);
     let lessons = result.rows;
 
     if (targetStudentId) {
       const progressRes = await db.query(`
         SELECT lesson_id, COUNT(question_id) as ans_count
-        FROM student_progress 
+        FROM student_progress
         WHERE student_id = $1
         GROUP BY lesson_id
       `, [targetStudentId]);
@@ -30,7 +46,7 @@ exports.getLessons = async (req, res, next) => {
           .map(row => row.lesson_id)
       );
 
-      let previousDone = true; 
+      let previousDone = true;
       lessons = lessons.map((lesson, index) => {
         let status = 'locked';
         if (completedLessonIds.has(lesson.id)) {
@@ -38,7 +54,7 @@ exports.getLessons = async (req, res, next) => {
           previousDone = true;
         } else if (previousDone || index === 0) {
           status = 'active';
-          previousDone = false; 
+          previousDone = false;
         } else {
           previousDone = false;
         }

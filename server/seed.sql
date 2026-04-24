@@ -16,12 +16,12 @@ INSERT INTO students (login_id, password_hash, name, grade, section, streak_days
 
 -- ====== SUBJECTS ======
 INSERT INTO subjects (grade, name, icon) VALUES
+(3, 'Mathematics', '📐'),
+(3, 'Science', '🔬'),
 (4, 'Mathematics', '📐'),
 (4, 'Science', '🔬'),
-(4, 'English', '📚'),
 (5, 'Mathematics', '📐'),
-(5, 'Science', '🔬'),
-(5, 'English', '📚');
+(5, 'Science', '🔬');
 
 -- ====== UNITS ======
 INSERT INTO units (subject_id, title, unit_order) VALUES

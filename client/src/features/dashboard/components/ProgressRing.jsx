@@ -6,7 +6,7 @@ const ProgressRing = ({ percentage = 0, size = 120, label = 'Overall Progress' }
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-blue-200 bg-linear-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <svg width={size} height={size} className="mb-4">
         {/* Background circle */}
         <circle
@@ -14,7 +14,7 @@ const ProgressRing = ({ percentage = 0, size = 120, label = 'Overall Progress' }
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#e5e7eb"
+          stroke="#e2e8f0"
           strokeWidth={4}
         />
         {/* Progress circle */}
@@ -23,7 +23,7 @@ const ProgressRing = ({ percentage = 0, size = 120, label = 'Overall Progress' }
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#3b82f6"
+          stroke="#2563eb"
           strokeWidth={4}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
@@ -38,12 +38,12 @@ const ProgressRing = ({ percentage = 0, size = 120, label = 'Overall Progress' }
           textAnchor="middle"
           fontSize="24"
           fontWeight="bold"
-          fill="#1f2937"
+          fill="#0f172a"
         >
           {percentage}%
         </text>
       </svg>
-      <p className="text-sm font-medium text-gray-600">{label}</p>
+      <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">{label}</p>
     </div>
   );
 };
