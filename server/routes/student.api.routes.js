@@ -5,7 +5,9 @@
  *   GET  /api/student/home                          — dashboard summary
  *   GET  /api/student/subjects/:subjectId/units     — units + lessons w/ unlock status
  *   GET  /api/student/lessons/:lessonId             — lesson content (locked gate)
+ *   GET  /api/student/lessons/:lessonId/progress    — section-level roadmap progress
  *   POST /api/student/lessons/:lessonId/submit      — submit answers, score, unlock next
+ *   POST /api/student/lessons/:lessonId/section/:type/complete — complete one section
  *   POST /api/student/games/:gameId/score           — submit game score
  *   GET  /api/student/profile                       — streak, completions, badges
  */
@@ -29,8 +31,14 @@ router.get('/subjects/:subjectId/units', studentController.getSubjectUnits);
 // Lesson content (server-side lock check)
 router.get('/lessons/:lessonId', studentController.getLessonContent);
 
-// Submit quiz answers → score + unlock next lesson
+// Section roadmap progress
+router.get('/lessons/:lessonId/progress', studentController.getLessonProgress);
+
+// Submit quiz answers → score + unlock next lesson (legacy full-lesson submit)
 router.post('/lessons/:lessonId/submit', studentController.submitLesson);
+
+// Complete a single section (MCQ, fill_blank, true_false, game)
+router.post('/lessons/:lessonId/section/:type/complete', studentController.completeSectionQuiz);
 
 // Submit game score
 router.post('/games/:gameId/score', studentController.submitGameScore);

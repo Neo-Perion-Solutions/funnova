@@ -13,6 +13,9 @@ router.post('/', [
   body('game_url').notEmpty()
 ], gameController.createGame);
 
+// Save game score
+router.post('/scores/save', verifyToken, gameController.saveGameScore);
+
 router.put('/:id', verifyAdmin, gameController.updateGame);
 router.delete('/:id', verifyAdmin, gameController.deleteGame);
 

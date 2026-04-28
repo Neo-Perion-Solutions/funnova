@@ -2,6 +2,10 @@
 
 import NumberBuilder from '../games/number-builder/NumberBuilder';
 import numberBuilderConfig from '../games/number-builder/config';
+import PlantOrAnimalGameWrapper from '../../features/games/plant-or-animal/PlantOrAnimalGameWrapper';
+import plantOrAnimalConfig from '../../features/games/plant-or-animal/config';
+import WaterUseGameWrapper from '../../features/games/water-use/WaterUseGameWrapper';
+import { waterUseConfig } from '../../features/games/water-use/config';
 
 /**
  * Game Registry — central mapping of gameId → game component + config.
@@ -58,6 +62,16 @@ export function getRegisteredGameIds() {
 registerGame('number-builder', {
   component: NumberBuilder,
   config: numberBuilderConfig,
+});
+
+registerGame('plant-or-animal', {
+  component: PlantOrAnimalGameWrapper,
+  config: plantOrAnimalConfig,
+});
+
+registerGame('water-use', {
+  component: WaterUseGameWrapper,
+  config: waterUseConfig,
 });
 
 export default registry;

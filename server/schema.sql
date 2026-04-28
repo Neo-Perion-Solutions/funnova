@@ -152,3 +152,17 @@ CREATE INDEX idx_questions_section ON questions(section_id);
 CREATE INDEX idx_lesson_completions_student ON lesson_completions(student_id);
 CREATE INDEX idx_student_answers_student ON student_answers(student_id);
 CREATE INDEX idx_student_answers_question ON student_answers(question_id);
+
+-- 12. Student Section Progress (per-section tracking for assessment roadmap)
+CREATE TABLE student_section_progress (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+  lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+  section_type VARCHAR(20) CHECK (section_type IN ('mcq', 'fill_blank', 'true_false', 'game')),
+  score INTEGER DEFAULT 0,
+  total INTEGER DEFAULT 0,
+  completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(student_id, lesson_id, section_type)
+);
+
+CREATE INDEX idx_section_progress_student ON student_section_progress(student_id, lesson_id);

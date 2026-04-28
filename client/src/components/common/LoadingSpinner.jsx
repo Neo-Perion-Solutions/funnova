@@ -1,37 +1,22 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
-const LoadingSpinner = () => (
-  <div style={styles.container}>
-    <div style={styles.spinner}></div>
-    <h2 style={styles.text}>Loading magic... ✨</h2>
+const LoadingSpinner = ({ message = 'Loading magic...' }) => (
+  <div className="flex flex-col items-center justify-center py-16">
+    <motion.div
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+      className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full"
+    />
+    <motion.div
+      animate={{ y: [0, -8, 0] }}
+      transition={{ repeat: Infinity, duration: 1.5 }}
+      className="text-4xl mt-4"
+    >
+      ✨
+    </motion.div>
+    <h2 className="mt-2 text-lg font-bold text-purple-600">{message}</h2>
   </div>
 );
-
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '50vh'
-  },
-  spinner: {
-    width: '60px',
-    height: '60px',
-    border: '6px solid var(--bg)',
-    borderTop: '6px solid var(--purple)',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite'
-  },
-  text: {
-    marginTop: '20px',
-    fontFamily: 'var(--font-heading)',
-    color: 'var(--purple)'
-  }
-};
-
-const styleSheet = document.createElement("style");
-styleSheet.innerText = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-document.head.appendChild(styleSheet);
 
 export default LoadingSpinner;

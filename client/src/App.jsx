@@ -12,8 +12,10 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SubjectPage from './pages/SubjectPage';
 import TrackerPage from './pages/TrackerPage';
-import LessonPage from './pages/LessonPage';
+import LessonPageRedesigned from './pages/LessonPageRedesigned';
+import SectionQuizPage from './pages/SectionQuizPage';
 import StudentProfilePage from './pages/StudentProfilePage';
+import PlantOrAnimalGame from './features/games/plant-or-animal/PlantOrAnimalGame';
 
 // Admin — layout & routing
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -73,7 +75,16 @@ function App() {
                   path="/student/lesson/:lessonId"
                   element={
                     <PrivateRoute>
-                      <LessonPage />
+                      <LessonPageRedesigned />
+                    </PrivateRoute>
+                  }
+                />
+
+                <Route
+                  path="/student/lesson/:lessonId/section/:sectionType"
+                  element={
+                    <PrivateRoute>
+                      <SectionQuizPage />
                     </PrivateRoute>
                   }
                 />
@@ -83,6 +94,15 @@ function App() {
                   element={
                     <PrivateRoute>
                       <StudentProfilePage />
+                    </PrivateRoute>
+                  }
+                />
+
+                <Route
+                  path="/game/plant-or-animal"
+                  element={
+                    <PrivateRoute>
+                      <PlantOrAnimalGame />
                     </PrivateRoute>
                   }
                 />

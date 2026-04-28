@@ -799,3 +799,235 @@ exports.getProfile = async (req, res, next) => {
     client.release();
   }
 };
+
+// ===========================================================================
+// GET /api/student/lessons/:lessonId/progress
+// Returns section-level unlock status for the 4-section roadmap
+// ===========================================================================
+exports.getLessonProgress = async (req, res, next) => {
+  const studentId = req.user.id;
+  const lessonId = parseInt(req.params.lessonId, 10);
+  const client = await pool.connect();
+
+  try {
+    // Count questions per section type for this lesson
+    const countQuery = await client.query(
+      `SELECT q.type AS section_type, COUNT(q.id) AS total
+       FROM sections s
+       JOIN questions q ON q.section_id = s.id
+       WHERE s.lesson_id = $1 AND s.is_deleted = false
+       GROUP BY q.type`,
+      [lessonId]
+    );
+    const counts = {};
+    countQuery.rows.forEach((r) => {
+      if (r.section_type) counts[r.section_type] = parseInt(r.total);
+    });
+
+    // Get completed sections for this student + lesson
+    const completedQuery = await client.query(
+      `SELECT section_type, score, total FROM student_section_progress
+       WHERE student_id = $1 AND lesson_id = $2`,
+      [studentId, lessonId]
+    );
+    const completed = {};
+    completedQuery.rows.forEach((r) => {
+      completed[r.section_type] = { score: r.score, total: r.total };
+    });
+
+    // Check if games exist for this lesson
+    const gamesQuery = await client.query(
+      `SELECT COUNT(*) AS cnt FROM games WHERE lesson_id = $1 AND is_active = true`,
+      [lessonId]
+    );
+    const hasGames = parseInt(gamesQuery.rows[0].cnt) > 0;
+
+    // Build progress response with unlock logic
+    const SECTIONS = ['mcq', 'fill_blank', 'true_false', 'game'];
+    const result = {};
+    let prevDone = true;
+
+    for (const type of SECTIONS) {
+      const isDone = completed[type] !== undefined;
+      const sectionTotal = type === 'game' ? null : (counts[type] || 0);
+
+      result[type] = {
+        status: isDone ? 'completed' : prevDone ? 'unlocked' : 'locked',
+        score: isDone ? completed[type].score : null,
+        total: sectionTotal,
+      };
+
+      // For game section, if no games exist, keep it but mark total as 0
+      if (type === 'game' && !hasGames) {
+        result[type].total = 0;
+      }
+
+      prevDone = isDone;
+    }
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+// ===========================================================================
+// POST /api/student/lessons/:lessonId/section/:type/complete
+// Body: { answers: [{ question_id, answer_given }] } — for quiz sections
+// Body: { score, total } — for game section
+// Grades answers, saves to student_answers, records section progress
+// ===========================================================================
+exports.completeSectionQuiz = async (req, res, next) => {
+  const studentId = req.user.id;
+  const lessonId = parseInt(req.params.lessonId, 10);
+  const sectionType = req.params.type;
+  const { answers, score: gameScore, total: gameTotal } = req.body;
+
+  const validTypes = ['mcq', 'fill_blank', 'true_false', 'game'];
+  if (!validTypes.includes(sectionType)) {
+    return res.status(400).json({ success: false, message: 'Invalid section type' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    let finalScore = 0;
+    let finalTotal = 0;
+
+    if (sectionType === 'game') {
+      // Game section — score provided directly
+      finalScore = gameScore || 0;
+      finalTotal = gameTotal || 100;
+    } else {
+      // Quiz section — grade the answers
+      if (!answers || !Array.isArray(answers) || answers.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: 'answers array is required for quiz sections',
+        });
+      }
+
+      // Get questions for this section type in this lesson
+      const questionIds = answers.map((a) => a.question_id);
+      
+      const placeholders = questionIds.map((_, i) => `$${i + 1}`).join(', ');
+      const queryParams = [...questionIds, lessonId, sectionType];
+
+      const qRes = await client.query(
+        `SELECT q.id, q.correct_answer, q.section_id
+         FROM questions q
+         JOIN sections s ON s.id = q.section_id
+         WHERE q.id IN (${placeholders}) 
+           AND s.lesson_id = $${questionIds.length + 1} 
+           AND q.type = $${questionIds.length + 2}`,
+        queryParams
+      );
+
+      if (qRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: 'No valid questions found for this section type',
+        });
+      }
+
+      const correctMap = {};
+      qRes.rows.forEach((q) => {
+        correctMap[q.id] = q.correct_answer;
+      });
+
+      // Score and save answers
+      for (const a of answers) {
+        if (!correctMap[a.question_id]) continue;
+
+        const is_correct =
+          String(a.answer_given).trim().toLowerCase() ===
+          String(correctMap[a.question_id]).trim().toLowerCase();
+        if (is_correct) finalScore++;
+
+        await client.query(
+          `INSERT INTO student_answers (student_id, question_id, answer_given, is_correct)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (student_id, question_id)
+           DO UPDATE SET answer_given = EXCLUDED.answer_given,
+                         is_correct   = EXCLUDED.is_correct,
+                         answered_at  = NOW()`,
+          [studentId, a.question_id, String(a.answer_given), is_correct]
+        );
+      }
+
+      finalTotal = qRes.rows.length;
+    }
+
+    // Upsert section progress
+    await client.query(
+      `INSERT INTO student_section_progress (student_id, lesson_id, section_type, score, total, completed_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (student_id, lesson_id, section_type)
+       DO UPDATE SET score = $4, total = $5, completed_at = NOW()`,
+      [studentId, lessonId, sectionType, finalScore, finalTotal]
+    );
+
+    // Calculate XP earned (based on score percentage)
+    const xpEarned = finalTotal > 0 ? Math.round((finalScore / finalTotal) * 20) : 5;
+
+    // Check if ALL 4 sections are now completed — if so, mark lesson as complete
+    const allProgressRes = await client.query(
+      `SELECT section_type FROM student_section_progress
+       WHERE student_id = $1 AND lesson_id = $2`,
+      [studentId, lessonId]
+    );
+    const completedTypes = new Set(allProgressRes.rows.map((r) => r.section_type));
+
+    // Check if at least the quiz sections are done (game is optional if no games exist)
+    const gamesExist = await client.query(
+      `SELECT COUNT(*) AS cnt FROM games WHERE lesson_id = $1 AND is_active = true`,
+      [lessonId]
+    );
+    const hasGames = parseInt(gamesExist.rows[0].cnt) > 0;
+
+    const requiredSections = ['mcq', 'fill_blank', 'true_false'];
+    if (hasGames) requiredSections.push('game');
+
+    const allDone = requiredSections.every((t) => completedTypes.has(t));
+
+    if (allDone) {
+      // Mark lesson as completed
+      await client.query(
+        `INSERT INTO lesson_completions (student_id, lesson_id)
+         VALUES ($1, $2)
+         ON CONFLICT (student_id, lesson_id) DO NOTHING`,
+        [studentId, lessonId]
+      );
+      // Increment lessons_completed on student record (only if first time)
+      await client.query(
+        `UPDATE students SET lessons_completed = lessons_completed + 1
+         WHERE id = $1 AND NOT EXISTS (
+           SELECT 1 FROM lesson_completions WHERE student_id = $1 AND lesson_id = $2
+         )`,
+        [studentId, lessonId]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      data: {
+        score: finalScore,
+        total: finalTotal,
+        xpEarned,
+        lessonCompleted: allDone,
+      },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+};
