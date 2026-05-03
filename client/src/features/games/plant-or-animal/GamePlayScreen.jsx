@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FEEDBACK_MESSAGES, GAME_LEVELS } from '../../../data/plantOrAnimalQuestions';
+import { SoundSystem } from '../../../game-engine/systems/SoundSystem';
 
 const GamePlayScreen = ({ currentLevel, questions, playerName, playerAvatar, onLevelComplete }) => {
   const level = GAME_LEVELS[currentLevel];
@@ -9,12 +10,16 @@ const GamePlayScreen = ({ currentLevel, questions, playerName, playerAvatar, onL
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(level.timer);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [feedbackType, setFeedbackType] = useState(null); // 'correct', 'wrong', 'timeout'
+  const [feedbackState, setFeedbackState] = useState(null); // 'correct', 'wrong', 'timeout', null
+  const [explanation, setExplanation] = useState('');
   const [answered, setAnswered] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answers, setAnswers] = useState([]); // Track all answers
+  const [showConfetti, setShowConfetti] = useState(false);
+  
   const timerRef = useRef(null);
+  const plantRef = useRef(null);
+  const animalRef = useRef(null);
+  const containerRef = useRef(null);
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
@@ -43,25 +48,29 @@ const GamePlayScreen = ({ currentLevel, questions, playerName, playerAvatar, onL
   }, [currentQuestionIndex, answered, level.timer]);
 
   const handleTimeout = () => {
-    const isCorrect = false;
-    const message = FEEDBACK_MESSAGES.timeout(currentQuestion.answer);
-    procesAnswer(isCorrect, message, 'timeout');
+    SoundSystem.playWrong();
+    processAnswer(false, 'timeout');
   };
 
-  const procesAnswer = (isCorrect, message, type = 'normal') => {
-    setFeedbackMessage(message);
-    setFeedbackType(type);
+  const processAnswer = (isCorrect, type = 'normal') => {
     setAnswered(true);
+    setFeedbackState(isCorrect ? 'correct' : 'wrong');
+    
+    // Generate explanation
+    if (isCorrect) {
+      setExplanation(`Great job! ${currentQuestion.name} is indeed a ${currentQuestion.answer}.`);
+      setShowConfetti(true);
+    } else {
+      setExplanation(`Oops! ${currentQuestion.name} is actually a ${currentQuestion.answer}.`);
+    }
 
     if (isCorrect) {
       setScore(score + 10);
       const newStreak = streak + 1;
       setStreak(newStreak);
       setBestStreak(Math.max(bestStreak, newStreak));
-      setFeedbackType('correct');
     } else {
       setStreak(0);
-      setFeedbackType('wrong');
     }
 
     setAnswers([
@@ -69,17 +78,17 @@ const GamePlayScreen = ({ currentLevel, questions, playerName, playerAvatar, onL
       {
         questionId: currentQuestion.id,
         isCorrect,
-        answer: selectedAnswer,
       },
     ]);
 
     // Move to next question after delay
     setTimeout(() => {
+      setShowConfetti(false);
       if (currentQuestionIndex < totalQuestions - 1) {
         setCurrentQuestionIndex(currentQuestionIndex + 1);
         setAnswered(false);
-        setSelectedAnswer(null);
-        setFeedbackMessage('');
+        setFeedbackState(null);
+        setExplanation('');
       } else {
         // Game complete
         const finalAccuracy = Math.round((correctCount + (isCorrect ? 1 : 0)) / totalQuestions * 100);
@@ -87,89 +96,138 @@ const GamePlayScreen = ({ currentLevel, questions, playerName, playerAvatar, onL
           level: currentLevel,
           score: score + (isCorrect ? 10 : 0),
           accuracy: finalAccuracy,
-          streak: bestStreak,
+          streak: Math.max(bestStreak, isCorrect ? streak + 1 : streak),
           correct: correctCount + (isCorrect ? 1 : 0),
           total: totalQuestions,
         });
       }
-    }, 2000);
+    }, 2500);
   };
 
   const handleAnswer = (answer) => {
     if (answered) return;
-
-    setSelectedAnswer(answer);
     const isCorrect = answer === currentQuestion.answer;
-    const message = isCorrect
-      ? FEEDBACK_MESSAGES.correct[Math.floor(Math.random() * FEEDBACK_MESSAGES.correct.length)]
-      : FEEDBACK_MESSAGES.wrong(currentQuestion.answer);
+    
+    if (isCorrect) {
+      SoundSystem.playCorrect();
+    } else {
+      SoundSystem.playWrong();
+    }
 
-    procesAnswer(isCorrect, message);
-    if (level.timer) {
-      clearInterval(timerRef.current);
+    processAnswer(isCorrect);
+    if (level.timer) clearInterval(timerRef.current);
+  };
+
+  const handleDragEnd = (event, info) => {
+    if (answered) return;
+    
+    // Check intersections
+    const pRect = plantRef.current?.getBoundingClientRect();
+    const aRect = animalRef.current?.getBoundingClientRect();
+    const { x, y } = info.point;
+    
+    const isInside = (rect) => rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    
+    if (isInside(pRect)) {
+      handleAnswer('plant');
+    } else if (isInside(aRect)) {
+      handleAnswer('animal');
     }
   };
 
+  const getDragControls = () => {
+    if (answered) return {};
+    return {
+      drag: true,
+      dragConstraints: containerRef,
+      dragElastic: 0.2,
+      dragSnapToOrigin: !answered, // Snaps back if dropped outside target
+      whileDrag: { scale: 1.1, rotate: Math.random() > 0.5 ? 5 : -5, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }
+    };
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-200 via-green-100 to-emerald-100 pb-8">
+    <div className="relative min-h-screen bg-gradient-to-b from-[#e0f7fa] to-[#e8f5e9] pb-8 overflow-hidden font-[Nunito]">
+      
+      {/* SUCCESS OVERLAY (Confetti + Glow) */}
+      <AnimatePresence>
+        {showConfetti && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-0 pointer-events-none bg-emerald-500/10 flex items-center justify-center"
+          >
+            {/* Simple CSS Confetti Burst representation */}
+            {[...Array(12)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+                animate={{ 
+                  x: (Math.random() - 0.5) * 500, 
+                  y: (Math.random() - 0.5) * 500 - 200, 
+                  scale: Math.random() * 1.5 + 0.5,
+                  opacity: 0,
+                  rotate: Math.random() * 360
+                }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+                className="absolute w-4 h-4 rounded-sm"
+                style={{ 
+                  backgroundColor: ['#f59e0b', '#ec4899', '#3b82f6', '#10b981'][Math.floor(Math.random() * 4)] 
+                }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* HUD Bar */}
-      <div className="bg-white/90 backdrop-blur border-b-2 border-emerald-200 sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          {/* Top row: Player info | Score | Streak | Timer */}
+      <div className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 rounded-b-3xl mx-4 lg:mx-auto max-w-5xl">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between mb-4">
-            {/* Player Info */}
-            <div className="flex items-center gap-2">
-              <span className="text-3xl">{playerAvatar}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">{playerAvatar}</span>
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase">Player</p>
-                <p className="font-bold text-gray-900 text-sm">{playerName}</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Explorer</p>
+                <p className="font-extrabold text-gray-900 text-base">{playerName}</p>
               </div>
             </div>
 
-            {/* Score */}
-            <div className="flex flex-col items-center">
-              <p className="text-xs font-bold text-gray-500 uppercase">Score</p>
-              <p className="text-2xl font-black text-emerald-600">⭐ {score}</p>
-            </div>
-
-            {/* Streak */}
-            <div className="flex flex-col items-center">
-              <p className="text-xs font-bold text-gray-500 uppercase">Streak</p>
-              <p className="text-2xl font-black text-orange-500">🔥 {streak}</p>
-            </div>
-
-            {/* Timer (Level 3 only) */}
-            {level.timer && (
+            <div className="flex gap-6">
               <div className="flex flex-col items-center">
-                <p className="text-xs font-bold text-gray-500 uppercase">Time</p>
-                <p
-                  className={`text-2xl font-black transition-colors ${
-                    timeLeft <= 3 ? 'text-red-600' : 'text-blue-600'
-                  }`}
-                >
-                  ⏱ {timeLeft}s
-                </p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Score</p>
+                <p className="text-2xl font-black text-amber-500">{score}</p>
               </div>
-            )}
+              <div className="flex flex-col items-center">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Streak</p>
+                <p className="text-2xl font-black text-orange-500">🔥 {streak}</p>
+              </div>
+              {level.timer && (
+                <div className="flex flex-col items-center">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Time</p>
+                  <p className={`text-2xl font-black ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>
+                    ⏱ {timeLeft}s
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Progress dots */}
-          <div className="flex gap-1 justify-center items-center">
+          {/* Progress Indicator */}
+          <div className="flex gap-2 justify-center items-center h-4">
             {questions.map((_, idx) => {
-              let color = 'bg-yellow-300'; // current
+              let color = 'bg-gray-200';
               if (idx < currentQuestionIndex) {
-                const ans = answers[idx];
-                color = ans?.isCorrect ? 'bg-emerald-500' : 'bg-red-500';
+                color = answers[idx]?.isCorrect ? 'bg-emerald-500' : 'bg-red-400';
               } else if (idx === currentQuestionIndex) {
-                color = 'bg-yellow-400 ring-2 ring-yellow-600 scale-125';
+                color = 'bg-amber-400 ring-4 ring-amber-100 scale-125';
               }
-
               return (
                 <motion.div
                   key={idx}
-                  className={`w-2 h-2 rounded-full transition-all ${color}`}
-                  animate={idx === currentQuestionIndex ? { scale: [1, 1.3, 1] } : {}}
-                  transition={{ duration: 0.6, repeat: Infinity }}
+                  className={`w-3 h-3 rounded-full transition-all ${color}`}
+                  animate={idx === currentQuestionIndex ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 1, repeat: Infinity }}
                 />
               );
             })}
@@ -177,111 +235,98 @@ const GamePlayScreen = ({ currentLevel, questions, playerName, playerAvatar, onL
         </div>
       </div>
 
-      {/* Question Card */}
-      <motion.div
-        key={currentQuestionIndex}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-4xl mx-auto px-4 mt-12"
-      >
-        <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
-          {/* Question number */}
-          <div className="mb-6">
-            <p className="text-sm font-bold text-gray-500 uppercase">
-              Question {currentQuestionIndex + 1} of {totalQuestions}
-            </p>
-          </div>
+      {/* Main Game Area */}
+      <div ref={containerRef} className="max-w-4xl mx-auto px-4 mt-8 relative z-10 flex flex-col items-center">
+        
+        {/* Instruction */}
+        <p className="text-gray-500 font-extrabold uppercase tracking-widest text-sm mb-6 text-center">
+          Tap or Drag into the right zone!
+        </p>
 
-          {/* Label */}
-          <p className="text-gray-600 font-semibold mb-6">What is this?</p>
-
-          {/* Large Emoji */}
+        {/* The Draggable Object */}
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4, type: 'spring' }}
-            className="text-8xl mb-8"
+            key={currentQuestionIndex}
+            initial={{ opacity: 0, y: 30, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8, y: -30 }}
+            transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
+            className="mb-12 relative z-20 cursor-grab active:cursor-grabbing"
+            {...getDragControls()}
+            onDragEnd={handleDragEnd}
+            whileHover={!answered ? { scale: 1.05 } : {}}
           >
-            {currentQuestion.emoji}
+            {/* Object Card */}
+            <motion.div 
+              className={`bg-white rounded-[40px] shadow-xl p-10 flex flex-col items-center justify-center border-4 border-white w-64 h-64
+                ${feedbackState === 'correct' ? 'ring-8 ring-emerald-400' : ''}
+                ${feedbackState === 'wrong' ? 'ring-8 ring-red-400' : ''}
+              `}
+              animate={feedbackState === 'wrong' ? { x: [-10, 10, -10, 10, 0] } : feedbackState === 'correct' ? { y: [0, -15, 0] } : {}}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="text-8xl mb-4 pointer-events-none drop-shadow-sm">{currentQuestion.emoji}</div>
+              <h3 className="text-3xl font-black text-gray-800 pointer-events-none">{currentQuestion.name}</h3>
+            </motion.div>
           </motion.div>
+        </AnimatePresence>
 
-          {/* Item Name */}
-          <h3 className="text-2xl font-black text-gray-900 mb-8">
-            {currentQuestion.name}
-          </h3>
-
-          {/* Feedback message */}
+        {/* Explanation Text */}
+        <div className="h-16 flex items-center justify-center mb-8">
           <AnimatePresence>
-            {feedbackMessage && (
+            {explanation && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className={`mb-6 py-3 px-4 rounded-2xl font-bold text-lg ${
-                  feedbackType === 'correct'
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-red-100 text-red-700'
-                }`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`px-6 py-3 rounded-full font-bold text-lg text-white shadow-lg
+                  ${feedbackState === 'correct' ? 'bg-emerald-500' : 'bg-red-500'}
+                `}
               >
-                {feedbackMessage}
+                {feedbackState === 'correct' ? '🎉' : '❌'} {explanation}
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Answer Buttons */}
-          <div className="grid grid-cols-2 gap-4 mt-8">
-            {/* Plant Button */}
-            <motion.button
-              whileHover={{ scale: answered ? 1 : 1.05 }}
-              whileTap={{ scale: answered ? 1 : 0.95 }}
-              onClick={() => handleAnswer('plant')}
-              disabled={answered}
-              className={`relative py-6 px-4 rounded-2xl font-bold text-lg transition-all overflow-hidden ${
-                !answered
-                  ? 'border-4 border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
-                  : selectedAnswer === 'plant'
-                  ? feedbackType === 'correct'
-                    ? 'bg-emerald-400 text-white scale-95'
-                    : 'bg-red-400 text-white scale-95'
-                  : 'opacity-50 border-4 border-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <span className="text-2xl mr-2">🌿</span>
-              Plant
-            </motion.button>
-
-            {/* Animal Button */}
-            <motion.button
-              whileHover={{ scale: answered ? 1 : 1.05 }}
-              whileTap={{ scale: answered ? 1 : 0.95 }}
-              onClick={() => handleAnswer('animal')}
-              disabled={answered}
-              className={`relative py-6 px-4 rounded-2xl font-bold text-lg transition-all overflow-hidden ${
-                !answered
-                  ? 'border-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer'
-                  : selectedAnswer === 'animal'
-                  ? feedbackType === 'correct'
-                    ? 'bg-emerald-400 text-white scale-95'
-                    : 'bg-red-400 text-white scale-95'
-                  : 'opacity-50 border-4 border-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <span className="text-2xl mr-2">🐾</span>
-              Animal
-            </motion.button>
-          </div>
         </div>
-      </motion.div>
 
-      {/* Accuracy display */}
-      <div className="text-center mt-8">
-        <p className="text-sm font-semibold text-gray-600">
-          Accuracy: <span className="text-emerald-600 font-black">{accuracy}%</span>
-        </p>
+        {/* Drop Zones / Buttons */}
+        <div className="grid grid-cols-2 gap-6 w-full max-w-2xl relative z-10">
+          
+          {/* PLANT ZONE */}
+          <motion.div
+            ref={plantRef}
+            whileHover={!answered ? { scale: 1.03 } : {}}
+            whileTap={!answered ? { scale: 0.95 } : {}}
+            onClick={() => handleAnswer('plant')}
+            className={`
+              rounded-3xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors shadow-lg
+              ${answered ? 'opacity-50 grayscale cursor-not-allowed' : 'bg-emerald-50 hover:bg-emerald-100 border-4 border-emerald-400'}
+            `}
+          >
+            <span className="text-5xl mb-3 drop-shadow-sm">🌿</span>
+            <span className="text-2xl font-black text-emerald-700">PLANT</span>
+          </motion.div>
+
+          {/* ANIMAL ZONE */}
+          <motion.div
+            ref={animalRef}
+            whileHover={!answered ? { scale: 1.03 } : {}}
+            whileTap={!answered ? { scale: 0.95 } : {}}
+            onClick={() => handleAnswer('animal')}
+            className={`
+              rounded-3xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors shadow-lg
+              ${answered ? 'opacity-50 grayscale cursor-not-allowed' : 'bg-blue-50 hover:bg-blue-100 border-4 border-blue-400'}
+            `}
+          >
+            <span className="text-5xl mb-3 drop-shadow-sm">🐾</span>
+            <span className="text-2xl font-black text-blue-700">ANIMAL</span>
+          </motion.div>
+
+        </div>
       </div>
     </div>
   );
 };
 
 export default GamePlayScreen;
+

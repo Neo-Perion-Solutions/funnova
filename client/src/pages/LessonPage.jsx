@@ -274,7 +274,12 @@ const LessonPage = () => {
                     </span>
                   )}
                 </div>
-                <GameEngine gameId={game.game_url} gameDbId={game.id} onFinish={handleGameFinish} />
+                <GameEngine
+                  gameId={game.game_url}
+                  gameDbId={game.id}
+                  lessonId={lessonId}
+                  onFinish={handleGameFinish}
+                />
               </motion.div>
             ))}
           </div>

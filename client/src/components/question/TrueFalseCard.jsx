@@ -1,9 +1,33 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 /**
- * TrueFalseCard — Big YES/NO (True/False) buttons for boolean questions.
- * Uses large, colorful buttons with expressive icons and bounce animations.
+ * TrueFalseCard — Kid-friendly True / False decision screen.
+ *
+ * STRICT DESIGN RULES:
+ *   ❌ No icons anywhere (no 👍 👎 🎉 ❌ emojis)
+ *   ❌ No hints
+ *   ❌ No streaks / XP / stars
+ *   ✅ Two giant text-only decision cards
+ *   ✅ CSS-driven states: default → selected → correct/wrong
+ *   ✅ Shake animation on wrong, pop animation on correct
+ *   ✅ Dimmed opponent card when one is selected
+ *
+ * STATES PER CARD:
+ *   default  → soft pastel background, coloured text
+ *   hover    → scale(1.04) lift — CSS only
+ *   selected → strong solid fill (green for TRUE, red for FALSE)
+ *   correct  → green fill + pop animation
+ *   wrong    → red fill + shake animation
+ *   dimmed   → other card fades when one is chosen
+ *
+ * Props:
+ *   question       {string}   — question text
+ *   selectedAnswer {string}   — 'true' | 'false' | null | undefined
+ *   onSelect       {function} — ('true' | 'false') => void
+ *   disabled       {boolean}  — lock after prior answer
+ *   showFeedback   {boolean}  — reveal correct/wrong colours
+ *   correctAnswer  {string}   — 'true' | 'false' (only used with showFeedback)
+ *   questionNumber {number}
  */
 const TrueFalseCard = ({
   question,
@@ -13,111 +37,88 @@ const TrueFalseCard = ({
   showFeedback = false,
   correctAnswer = null,
   questionNumber = 1,
-  totalQuestions = 5,
+  // Legacy compat — received but not rendered
+  totalQuestions,
 }) => {
-  const isCorrectTrue = showFeedback && correctAnswer?.toLowerCase() === 'true';
-  const isCorrectFalse = showFeedback && correctAnswer?.toLowerCase() === 'false';
-  const selectedTrue = String(selectedAnswer).toLowerCase() === 'true';
-  const selectedFalse = String(selectedAnswer).toLowerCase() === 'false';
+  const sel = String(selectedAnswer ?? '').toLowerCase();
+  const cor = String(correctAnswer  ?? '').toLowerCase();
 
-  const isWrongTrue = showFeedback && selectedTrue && correctAnswer?.toLowerCase() !== 'true';
-  const isWrongFalse = showFeedback && selectedFalse && correctAnswer?.toLowerCase() !== 'false';
+  const trueSelected  = sel === 'true';
+  const falseSelected = sel === 'false';
+  const hasSelection  = trueSelected || falseSelected;
+
+  /* Feedback state per button */
+  const trueState = (() => {
+    if (!hasSelection) return '';
+    if (showFeedback) {
+      if (cor === 'true')                    return 'correct';
+      if (trueSelected && cor !== 'true')    return 'wrong';
+      return '';
+    }
+    if (trueSelected)  return 'selected';
+    if (falseSelected) return 'dimmed';
+    return '';
+  })();
+
+  const falseState = (() => {
+    if (!hasSelection) return '';
+    if (showFeedback) {
+      if (cor === 'false')                   return 'correct';
+      if (falseSelected && cor !== 'false')  return 'wrong';
+      return '';
+    }
+    if (falseSelected) return 'selected';
+    if (trueSelected)  return 'dimmed';
+    return '';
+  })();
+
+  const handleSelect = (value) => {
+    if (disabled || showFeedback) return;
+    onSelect(value);
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-      className="w-full"
-    >
-      {/* Progress dots */}
-      <div className="flex items-center gap-1 mb-4">
-        {Array.from({ length: totalQuestions }, (_, i) => (
-          <div
-            key={i}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              i < questionNumber
-                ? 'w-8 bg-gradient-to-r from-purple-500 to-pink-500'
-                : i === questionNumber
-                ? 'w-8 bg-purple-300'
-                : 'w-4 bg-gray-200'
-            }`}
-          />
-        ))}
+    <div className="quiz-question-enter" style={{ width: '100%' }}>
+
+      {/* ── Question card ── */}
+      <div className="quiz-question-card">
+        <span className="quiz-question-label">Question {questionNumber} — True or False</span>
+        <p className="quiz-question-text">{question}</p>
       </div>
 
-      {/* Question */}
-      <motion.div
-        className="bg-white rounded-3xl p-6 mb-6 shadow-lg border-2 border-teal-100"
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-      >
-        <span className="inline-block px-3 py-1 bg-teal-100 text-teal-700 text-xs font-bold rounded-full mb-3">
-          True or False?
-        </span>
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-snug">
-          {question}
-        </h3>
-      </motion.div>
+      {/* ── Decision cards ── */}
+      <div className="quiz-tf-grid" role="group" aria-label="True or False choices">
 
-      {/* True/False Buttons */}
-      <div className="grid grid-cols-2 gap-4">
         {/* TRUE */}
-        <motion.button
-          whileHover={!disabled ? { scale: 1.05 } : {}}
-          whileTap={!disabled ? { scale: 0.92 } : {}}
-          animate={isWrongTrue ? { x: [0, -8, 8, -8, 8, 0] } : {}}
-          onClick={() => !disabled && onSelect('true')}
+        <button
+          id={`tf-true-q${questionNumber}`}
+          type="button"
+          className={`quiz-tf-card quiz-tf-true ${trueState}`}
+          onClick={() => handleSelect('true')}
           disabled={disabled}
-          className={`
-            relative rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3
-            transition-all shadow-lg hover:shadow-xl
-            ${isCorrectTrue ? 'bg-gradient-to-br from-green-400 to-emerald-500 ring-4 ring-green-300 ring-offset-2' : ''}
-            ${isWrongTrue ? 'bg-gradient-to-br from-red-400 to-red-500 ring-4 ring-red-300 ring-offset-2' : ''}
-            ${!showFeedback && selectedTrue ? 'bg-gradient-to-br from-green-400 to-emerald-500 ring-4 ring-green-300 ring-offset-2' : ''}
-            ${!showFeedback && !selectedTrue ? 'bg-gradient-to-br from-green-400 to-emerald-500 opacity-80' : ''}
-            ${disabled && !showFeedback ? 'cursor-not-allowed opacity-70' : ''}
-          `}
+          aria-pressed={trueSelected}
+          aria-label="True"
+          aria-disabled={disabled || showFeedback}
         >
-          <motion.span
-            animate={selectedTrue && !showFeedback ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-            className="text-4xl sm:text-5xl"
-          >
-            {isCorrectTrue ? '🎉' : isWrongTrue ? '❌' : '👍'}
-          </motion.span>
-          <span className="text-xl sm:text-2xl font-extrabold text-white">TRUE</span>
-        </motion.button>
+          TRUE
+        </button>
 
         {/* FALSE */}
-        <motion.button
-          whileHover={!disabled ? { scale: 1.05 } : {}}
-          whileTap={!disabled ? { scale: 0.92 } : {}}
-          animate={isWrongFalse ? { x: [0, -8, 8, -8, 8, 0] } : {}}
-          onClick={() => !disabled && onSelect('false')}
+        <button
+          id={`tf-false-q${questionNumber}`}
+          type="button"
+          className={`quiz-tf-card quiz-tf-false ${falseState}`}
+          onClick={() => handleSelect('false')}
           disabled={disabled}
-          className={`
-            relative rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3
-            transition-all shadow-lg hover:shadow-xl
-            ${isCorrectFalse ? 'bg-gradient-to-br from-green-400 to-emerald-500 ring-4 ring-green-300 ring-offset-2' : ''}
-            ${isWrongFalse ? 'bg-gradient-to-br from-red-400 to-red-500 ring-4 ring-red-300 ring-offset-2' : ''}
-            ${!showFeedback && selectedFalse ? 'bg-gradient-to-br from-red-400 to-pink-500 ring-4 ring-red-300 ring-offset-2' : ''}
-            ${!showFeedback && !selectedFalse ? 'bg-gradient-to-br from-red-400 to-pink-500 opacity-80' : ''}
-            ${disabled && !showFeedback ? 'cursor-not-allowed opacity-70' : ''}
-          `}
+          aria-pressed={falseSelected}
+          aria-label="False"
+          aria-disabled={disabled || showFeedback}
         >
-          <motion.span
-            animate={selectedFalse && !showFeedback ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-            className="text-4xl sm:text-5xl"
-          >
-            {isCorrectFalse ? '🎉' : isWrongFalse ? '❌' : '👎'}
-          </motion.span>
-          <span className="text-xl sm:text-2xl font-extrabold text-white">FALSE</span>
-        </motion.button>
+          FALSE
+        </button>
+
       </div>
-    </motion.div>
+    </div>
   );
 };
 

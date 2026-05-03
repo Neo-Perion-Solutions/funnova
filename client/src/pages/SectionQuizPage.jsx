@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import MCQCard from '../components/question/MCQCard';
 import TrueFalseCard from '../components/question/TrueFalseCard';
 import FillBlankCard from '../components/question/FillBlankCard';
@@ -12,43 +10,69 @@ import { studentService } from '../services/student.service';
 import api from '../lib/axios';
 import { toast } from 'sonner';
 
+// Quiz-specific styles
+import '../styles/quiz.css';
+
 /**
- * SectionQuizPage — Renders the question runner for a specific section type.
+ * SectionQuizPage — Kid-friendly MCQ quiz runner.
+ *
  * Route: /student/lesson/:lessonId/section/:sectionType
- * Filters questions by section type, handles answering + submit, shows completion modal.
+ *
+ * Screen layout:
+ *   ┌─────────────────────────────────────────────────────┐
+ *   │  ← Back   |  Lesson Title (center)  |  Q 2 / 5    │  ← Header
+ *   │  ████████████████░░░░░░░░░░░░░░░░░░░               │  ← Progress bar
+ *   │                                                     │
+ *   │         ┌─────────────────────────┐                │
+ *   │         │  Question X             │                │
+ *   │         │  "What is ...?"         │                │  ← Question card
+ *   │         └─────────────────────────┘                │
+ *   │                                                     │
+ *   │     [ Option A ]       [ Option B ]                │
+ *   │     [ Option C ]       [ Option D ]                │  ← 2×2 Options
+ *   │                                                     │
+ *   │  [ ← Previous ]              [ Next → / Finish! ] │  ← Bottom nav
+ *   └─────────────────────────────────────────────────────┘
+ *
+ * No icons in answers. No hints. No sidebars. Everything centered.
  */
 
 const SECTION_LABELS = {
-  mcq: 'Multiple Choice',
+  mcq:        'Multiple Choice',
   fill_blank: 'Fill in the Blanks',
   true_false: 'True or False',
 };
 
+/* ─────────────────────────────────────────────────────────────── */
+
 const SectionQuizPage = () => {
-  const navigate = useNavigate();
+  const navigate   = useNavigate();
   const { lessonId, sectionType } = useParams();
 
-  // Fetch full lesson content (reuses existing endpoint)
+  /* Fetch full lesson content */
   const { data: lessonResponse, loading, error } = useFetch(() =>
     studentService.getLessonContent(lessonId)
   );
 
-  const lessonData = lessonResponse?.data;
-  const lesson = lessonData?.lesson;
-  const allSections = lessonData?.sections || [];
+  const lessonData   = lessonResponse?.data;
+  const lesson       = lessonData?.lesson;
+  const allSections  = lessonData?.sections || [];
 
-  // Filter questions by matching type across ALL sections
+  /* Filter questions by section type */
   const questions = allSections
     .flatMap((s) => s.questions || [])
     .filter((q) => q.type && q.type.toLowerCase() === sectionType.toLowerCase());
 
+  /* Quiz state */
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [scoreResult, setScoreResult] = useState(null);
+  const [answers,       setAnswers]       = useState({});
+  const [submitting,    setSubmitting]    = useState(false);
+  const [showModal,     setShowModal]     = useState(false);
+  const [scoreResult,   setScoreResult]   = useState(null);
+  /* key trick — changes every time questionIndex changes to re-trigger CSS animation */
+  const [animKey,       setAnimKey]       = useState(0);
 
-  // Restore prior answers
+  /* Restore prior answers */
   useEffect(() => {
     if (questions.length > 0) {
       const initial = {};
@@ -62,18 +86,29 @@ const SectionQuizPage = () => {
   }, [allSections]);
 
   const currentQuestion = questions[questionIndex] || null;
-  const totalQuestions = questions.length;
+  const totalQuestions  = questions.length;
+  const isLastQuestion  = questionIndex === totalQuestions - 1;
+  const progressPct     = totalQuestions > 0
+    ? ((questionIndex + 1) / totalQuestions) * 100
+    : 0;
 
+  /* ── Handlers ── */
   const handleAnswerSelect = (questionId, answer) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
   const handleNext = () => {
-    if (questionIndex < totalQuestions - 1) setQuestionIndex(questionIndex + 1);
+    if (questionIndex < totalQuestions - 1) {
+      setQuestionIndex(questionIndex + 1);
+      setAnimKey((k) => k + 1);
+    }
   };
 
   const handlePrevious = () => {
-    if (questionIndex > 0) setQuestionIndex(questionIndex - 1);
+    if (questionIndex > 0) {
+      setQuestionIndex(questionIndex - 1);
+      setAnimKey((k) => k + 1);
+    }
   };
 
   const handleSubmitSection = async () => {
@@ -90,7 +125,6 @@ const SectionQuizPage = () => {
         return;
       }
 
-      // Submit section via the new endpoint
       const response = await api.post(
         `/student/lessons/${lessonId}/section/${sectionType}/complete`,
         { answers: answerPayload }
@@ -114,6 +148,7 @@ const SectionQuizPage = () => {
     setAnswers({});
     setQuestionIndex(0);
     setScoreResult(null);
+    setAnimKey((k) => k + 1);
   };
 
   const handleContinue = () => {
@@ -121,79 +156,18 @@ const SectionQuizPage = () => {
     navigate(`/student/lesson/${lessonId}`);
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen"
-        style={{ background: 'linear-gradient(180deg, var(--bg-primary), var(--bg-secondary))' }}
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-          className="w-16 h-16 rounded-full"
-          style={{ border: '4px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent-gold)' }}
-        />
-        <p className="mt-4 text-lg font-bold" style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-display)' }}>
-          Loading questions...
-        </p>
-      </div>
-    );
-  }
+  const goBack = () => navigate(`/student/lesson/${lessonId}`);
 
-  // Error state
-  if (error || !lesson) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6"
-        style={{ background: 'linear-gradient(180deg, var(--bg-primary), var(--bg-secondary))' }}
-      >
-        <div className="text-6xl">🚫</div>
-        <h2 className="text-2xl font-extrabold text-white">Oops!</h2>
-        <p className="text-center max-w-md" style={{ color: 'var(--text-muted)' }}>
-          {error || 'Section not found'}
-        </p>
-        <button
-          onClick={() => navigate(`/student/lesson/${lessonId}`)}
-          className="px-8 py-3 rounded-2xl font-bold text-white shadow-lg"
-          style={{ background: 'var(--accent-gold)', color: '#1a1a1a', fontFamily: 'var(--font-display)' }}
-        >
-          Back to Lesson
-        </button>
-      </div>
-    );
-  }
-
-  // No questions for this section type
-  if (questions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6"
-        style={{ background: 'linear-gradient(180deg, var(--bg-primary), var(--bg-secondary))' }}
-      >
-        <div className="text-5xl mb-4">📝</div>
-        <h3 className="text-xl font-extrabold text-white">No Questions Yet</h3>
-        <p style={{ color: 'var(--text-muted)' }}>
-          This section doesn&apos;t have any questions yet.
-        </p>
-        <button
-          onClick={() => navigate(`/student/lesson/${lessonId}`)}
-          className="px-8 py-3 rounded-2xl font-bold shadow-lg"
-          style={{ background: 'var(--accent-gold)', color: '#1a1a1a', fontFamily: 'var(--font-display)' }}
-        >
-          Back to Lesson
-        </button>
-      </div>
-    );
-  }
-
-  const isLastQuestion = questionIndex === totalQuestions - 1;
-
+  /* ── Render question based on type ── */
   const renderQuestion = () => {
     if (!currentQuestion) return null;
+
     const commonProps = {
-      question: currentQuestion.question_text,
+      question:       currentQuestion.question_text,
       selectedAnswer: answers[currentQuestion.id],
-      onSelect: (ans) => handleAnswerSelect(currentQuestion.id, ans),
-      disabled: !!currentQuestion?.prior_answer,
-      questionNumber: questionIndex,
+      onSelect:       (ans) => handleAnswerSelect(currentQuestion.id, ans),
+      disabled:       !!currentQuestion?.prior_answer,
+      questionNumber: questionIndex + 1,
       totalQuestions,
     };
 
@@ -211,103 +185,141 @@ const SectionQuizPage = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col"
-      style={{ background: 'linear-gradient(180deg, var(--bg-primary), var(--bg-secondary))' }}
-    >
-      {/* Header */}
-      <header className="sticky top-0 z-50 px-4 py-3 shadow-lg"
-        style={{
-          background: 'rgba(15,12,41,0.9)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <div className="flex items-center justify-between mx-auto max-w-3xl">
-          <button
-            onClick={() => navigate(`/student/lesson/${lessonId}`)}
-            className="flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold transition-colors"
-            style={{
-              color: 'var(--accent-gold)',
-              background: 'rgba(247,201,72,0.1)',
-            }}
-          >
-            <ChevronLeft size={16} /> Back
-          </button>
-          <div className="text-center flex-1 px-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-gold)' }}>
-              {SECTION_LABELS[sectionType] || sectionType}
-            </p>
-            <h1 className="text-sm sm:text-base font-extrabold text-white truncate">
-              {lesson.title}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-              {questionIndex + 1}/{totalQuestions}
-            </span>
-            <div className="w-16 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'var(--accent-gold)' }}
-                animate={{ width: `${((questionIndex + 1) / totalQuestions) * 100}%` }}
-              />
-            </div>
-          </div>
+  /* ════════════════════════════════════════════════════════════ */
+  /* Loading state                                                */
+  /* ════════════════════════════════════════════════════════════ */
+  if (loading) {
+    return (
+      <div className="quiz-page">
+        <div className="quiz-state-center">
+          <div className="quiz-spinner" />
+          <p className="quiz-state-title">Loading questions…</p>
         </div>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════════════════════ */
+  /* Error state                                                  */
+  /* ════════════════════════════════════════════════════════════ */
+  if (error || !lesson) {
+    return (
+      <div className="quiz-page">
+        <div className="quiz-state-center">
+          <span className="quiz-state-emoji">🚫</span>
+          <p className="quiz-state-title">Oops! Something went wrong</p>
+          <p className="quiz-state-sub">{error || 'Section not found'}</p>
+          <button className="quiz-state-btn" onClick={goBack}>
+            ← Back to Lesson
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════════════════════ */
+  /* No questions state                                           */
+  /* ════════════════════════════════════════════════════════════ */
+  if (questions.length === 0) {
+    return (
+      <div className="quiz-page">
+        <div className="quiz-state-center">
+          <span className="quiz-state-emoji">📝</span>
+          <p className="quiz-state-title">No Questions Yet</p>
+          <p className="quiz-state-sub">This section doesn&apos;t have any questions yet.</p>
+          <button className="quiz-state-btn" onClick={goBack}>
+            ← Back to Lesson
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════════════════════ */
+  /* Quiz runner                                                  */
+  /* ════════════════════════════════════════════════════════════ */
+  return (
+    <div className="quiz-page">
+
+      {/* ── Header ── */}
+      <header className="quiz-header">
+        {/* Back button */}
+        <button id="quiz-back-btn" className="quiz-back-btn" onClick={goBack} aria-label="Go back to lesson">
+          &#8592; Back
+        </button>
+
+        {/* Lesson title — centered */}
+        <h1 className="quiz-header-title" title={lesson.title}>
+          {lesson.title}
+        </h1>
+
+        {/* Question counter */}
+        <span className="quiz-counter" aria-label={`Question ${questionIndex + 1} of ${totalQuestions}`}>
+          {questionIndex + 1} / {totalQuestions}
+        </span>
       </header>
 
-      {/* Main */}
-      <main className="flex-1 mx-auto max-w-2xl px-4 py-6 sm:px-6 w-full">
-        <AnimatePresence mode="wait">
-          <div key={questionIndex}>
-            {renderQuestion()}
-          </div>
-        </AnimatePresence>
+      {/* ── Progress bar ── */}
+      <div
+        className="quiz-progress-wrap"
+        role="progressbar"
+        aria-valuenow={Math.round(progressPct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Quiz progress"
+      >
+        <div
+          className="quiz-progress-fill"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
 
-        {/* Navigation */}
-        <div className="flex gap-3 justify-between pt-6">
+      {/* ── Main content ── */}
+      <main className="quiz-main">
+
+        {/* Question card + options — keyed to re-animate on nav */}
+        <div key={animKey} className="quiz-question-enter" style={{ width: '100%' }}>
+          {renderQuestion()}
+        </div>
+
+        {/* ── Bottom navigation ── */}
+        <nav className="quiz-nav" aria-label="Question navigation">
+          {/* Previous */}
           <button
+            id="quiz-prev-btn"
+            className="quiz-prev-btn"
             onClick={handlePrevious}
             disabled={questionIndex === 0}
-            className="flex items-center gap-1 rounded-2xl px-5 py-3 font-bold transition-shadow disabled:opacity-30 shadow-sm hover:shadow-md"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              color: 'var(--text-primary)',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
+            aria-label="Previous question"
           >
-            <ChevronLeft size={18} /> Prev
+            &#8592; Previous
           </button>
 
+          {/* Next / Finish */}
           {isLastQuestion ? (
             <button
+              id="quiz-finish-btn"
+              className="quiz-next-btn quiz-finish-btn"
               onClick={handleSubmitSection}
               disabled={submitting}
-              className="flex items-center gap-2 rounded-2xl px-8 py-3 font-extrabold text-[#1a1a1a] shadow-lg disabled:opacity-50 transition-all hover:scale-[1.03] active:scale-[0.97]"
-              style={{
-                background: 'var(--accent-gold)',
-                fontFamily: 'var(--font-display)',
-              }}
+              aria-label="Finish quiz"
             >
-              {submitting ? 'Submitting...' : 'Finish! 🎉'}
+              {submitting ? 'Submitting…' : 'Finish! 🎉'}
             </button>
           ) : (
             <button
+              id="quiz-next-btn"
+              className="quiz-next-btn"
               onClick={handleNext}
-              className="flex items-center gap-1 rounded-2xl px-8 py-3 font-extrabold text-white shadow-lg transition-all hover:scale-[1.03] active:scale-[0.97]"
-              style={{
-                background: 'linear-gradient(135deg, #6C63FF, #a855f7)',
-                fontFamily: 'var(--font-display)',
-              }}
+              aria-label="Next question"
             >
-              Next <ChevronRight size={18} />
+              Next &#8594;
             </button>
           )}
-        </div>
+        </nav>
       </main>
 
-      {/* Completion modal */}
+      {/* ── Completion modal ── */}
       {showModal && scoreResult && (
         <SectionCompleteModal
           sectionLabel={SECTION_LABELS[sectionType] || sectionType}

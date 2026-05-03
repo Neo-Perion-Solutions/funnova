@@ -1,11 +1,140 @@
-import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import React, { useState, useCallback, useRef } from 'react';
 
 /**
- * DragDropCard — Core interaction for kids.
- * Presents draggable word chips that can be placed into blank slots.
- * Falls back to tap-to-select on mobile for accessibility.
+ * DragDropCard — Kid-friendly "fill in the blank" with drag-and-drop.
+ *
+ * STRICT RULES (from design spec):
+ *   ❌ No icons inside question or answer area
+ *   ❌ No hints
+ *   ❌ No streaks
+ *   ✅ Text-only options (word chips)
+ *   ✅ Native HTML5 drag-and-drop + tap-to-select fallback
+ *
+ * HOW BLANKS WORK:
+ *   The question text uses "___" (three or more underscores) as blank markers.
+ *   e.g. "Plants have ___ that help them make food."
+ *   This component parses the text, splits on ___ tokens, and renders a
+ *   <BlankDropZone> in each gap.
+ *
+ *   If no "___" is found in the question text, a SINGLE blank is placed at
+ *   the end (legacy fallback for questions formatted without markers).
+ *
+ * INTERACTION:
+ *   Desktop: drag chip → drop on blank
+ *   Mobile:  tap chip to select → tap blank to place
+ *   Filled blank: click/tap to clear (returns word to pool)
+ *
+ * FEEDBACK (props-driven, parent controls):
+ *   Pass feedbackMap = { blankIndex: 'correct' | 'wrong' | null }
+ *   Correct → green glow on blank
+ *   Wrong   → red shake on blank, chip returns to pool on reset
+ *
+ * Props:
+ *   question       {string}    — question text with ___ as blank markers
+ *   options        {string[]}  — array of word strings
+ *   selectedAnswer {string}    — legacy single-answer string (for SectionQuizPage compat)
+ *   onSelect       {function}  — (answerString) => void  (joined by '|' for multi-blank)
+ *   disabled       {boolean}
+ *   questionNumber {number}
+ *   feedbackMap    {object}    — { 0: 'correct', 1: 'wrong', ... }
  */
+
+/* ── Parse question into segments ──────────────────────────── */
+const BLANK_MARKER = /_{2,}/;  // two or more underscores
+
+function parseQuestion(text) {
+  // Split on blank markers — produces alternating [text, blank, text, blank...]
+  const raw = text.split(BLANK_MARKER);
+  const segments = [];
+  raw.forEach((part, i) => {
+    if (part) segments.push({ type: 'text', value: part, key: `t${i}` });
+    if (i < raw.length - 1) {
+      segments.push({ type: 'blank', index: segments.filter(s => s.type === 'blank').length, key: `b${i}` });
+    }
+  });
+  // If no blanks found → single blank at end
+  const hasBlank = segments.some(s => s.type === 'blank');
+  if (!hasBlank) {
+    return [{ type: 'text', value: text, key: 't0' }, { type: 'blank', index: 0, key: 'b0' }];
+  }
+  return segments;
+}
+
+/* ── Blank drop zone ───────────────────────────────────────── */
+const BlankDropZone = ({ index, value, onDrop, onClear, disabled, feedback, snapKey }) => {
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!disabled) setDragOver(true);
+  };
+  const handleDragLeave = () => setDragOver(false);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (disabled) return;
+    const word = e.dataTransfer.getData('text/plain');
+    if (word) onDrop(index, word);
+  };
+
+  const feedbackClass = feedback === 'correct' ? 'correct'
+    : feedback === 'wrong' ? 'wrong'
+    : value ? 'filled'
+    : '';
+
+  return (
+    <span
+      role="button"
+      aria-label={value ? `Blank ${index + 1}: ${value}. Click to remove.` : `Blank ${index + 1}: empty. Drop a word here.`}
+      tabIndex={disabled ? -1 : 0}
+      key={snapKey}  /* forces re-mount snap animation */
+      className={`quiz-blank ${feedbackClass} ${dragOver ? 'drag-over' : ''} ${value && snapKey ? 'quiz-blank-snap' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={() => !disabled && value && onClear(index)}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && value) onClear(index); }}
+    >
+      {value ? (
+        <>
+          {value}
+          {!disabled && (
+            <span className="quiz-blank-clear" aria-hidden="true">✕</span>
+          )}
+        </>
+      ) : (
+        <span className="quiz-blank-placeholder">drop here</span>
+      )}
+    </span>
+  );
+};
+
+/* ── Draggable word chip ───────────────────────────────────── */
+const WordChip = ({ word, index, isUsed, isTapSelected, disabled, onDragStart, onDragEnd, onTap }) => {
+  const colorClass = `quiz-chip-${index % 6}`;
+  const stateClass = isUsed ? 'used' : isTapSelected ? 'tap-selected' : '';
+
+  return (
+    <button
+      type="button"
+      aria-label={`Word: ${word}${isUsed ? ' (already placed)' : ''}`}
+      aria-disabled={disabled || isUsed}
+      draggable={!disabled && !isUsed}
+      className={`quiz-chip ${colorClass} ${stateClass}`}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', word);
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart(word);
+      }}
+      onDragEnd={onDragEnd}
+      onClick={() => !disabled && !isUsed && onTap(word)}
+    >
+      {word}
+    </button>
+  );
+};
+
+/* ── Main DragDropCard ─────────────────────────────────────── */
 const DragDropCard = ({
   question,
   options = [],
@@ -13,141 +142,155 @@ const DragDropCard = ({
   onSelect,
   disabled = false,
   questionNumber = 1,
-  totalQuestions = 5,
+  feedbackMap = {},
+  // Legacy compat — unused but received from SectionQuizPage
+  totalQuestions,
+  showFeedback,
+  correctAnswer,
 }) => {
-  const [selectedChip, setSelectedChip] = useState(selectedAnswer || null);
+  const segments = parseQuestion(question || '');
+  const blankCount = segments.filter(s => s.type === 'blank').length;
 
-  const handleChipClick = useCallback((option) => {
-    if (disabled) return;
-    const newValue = selectedChip === option ? null : option;
-    setSelectedChip(newValue);
-    onSelect(newValue || '');
-  }, [disabled, selectedChip, onSelect]);
+  /* answers[i] = word placed in blank i, or null */
+  const [answers, setAnswers] = useState(() => {
+    // Restore from selectedAnswer string (joined by '|')
+    if (selectedAnswer) {
+      const parts = selectedAnswer.split('|');
+      return Array.from({ length: blankCount }, (_, i) => parts[i] || null);
+    }
+    return Array(blankCount).fill(null);
+  });
 
-  const chipColors = [
-    'from-purple-400 to-purple-600',
-    'from-blue-400 to-blue-600',
-    'from-pink-400 to-pink-600',
-    'from-orange-400 to-orange-600',
-    'from-teal-400 to-teal-600',
-    'from-green-400 to-green-600',
-  ];
+  /* For tap-to-select (mobile) */
+  const [tapSelected, setTapSelected] = useState(null);
+  /* Track which chip key is "dragging" for opacity */
+  const [draggingWord, setDraggingWord] = useState(null);
+  /* Snap animation keys per blank (increment to re-trigger) */
+  const snapKeys = useRef(Array(blankCount).fill(0));
+
+  /* Emit to parent whenever answers change */
+  const emit = useCallback((nextAnswers) => {
+    onSelect(nextAnswers.join('|'));
+  }, [onSelect]);
+
+  /* Place a word into a blank */
+  const placeWord = useCallback((blankIndex, word) => {
+    setAnswers(prev => {
+      const next = [...prev];
+      // If word is already placed somewhere else, remove it from there first
+      const existingIndex = prev.indexOf(word);
+      if (existingIndex !== -1 && existingIndex !== blankIndex) {
+        next[existingIndex] = null;
+      }
+      next[blankIndex] = word;
+      snapKeys.current[blankIndex] = (snapKeys.current[blankIndex] || 0) + 1;
+      emit(next);
+      return next;
+    });
+    setTapSelected(null);
+  }, [emit]);
+
+  /* Clear a blank */
+  const clearBlank = useCallback((blankIndex) => {
+    setAnswers(prev => {
+      const next = [...prev];
+      next[blankIndex] = null;
+      emit(next);
+      return next;
+    });
+  }, [emit]);
+
+  /* Tap handler: select chip OR place into blank */
+  const handleChipTap = useCallback((word) => {
+    setTapSelected(prev => prev === word ? null : word);
+  }, []);
+
+  const handleBlankDrop = useCallback((blankIndex, word) => {
+    placeWord(blankIndex, word);
+  }, [placeWord]);
+
+  const handleBlankClick = useCallback((blankIndex) => {
+    if (tapSelected) {
+      placeWord(blankIndex, tapSelected);
+    } else {
+      clearBlank(blankIndex);
+    }
+  }, [tapSelected, placeWord, clearBlank]);
+
+  /* Which words are currently placed (to dim chips) */
+  const usedWords = new Set(answers.filter(Boolean));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-      className="w-full"
-    >
-      {/* Progress dots */}
-      <div className="flex items-center gap-1 mb-4">
-        {Array.from({ length: totalQuestions }, (_, i) => (
-          <div
-            key={i}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              i < questionNumber
-                ? 'w-8 bg-gradient-to-r from-purple-500 to-pink-500'
-                : i === questionNumber
-                ? 'w-8 bg-purple-300'
-                : 'w-4 bg-gray-200'
-            }`}
+    <div className="quiz-question-enter" style={{ width: '100%' }}>
+
+      {/* ── Question card with inline blanks ── */}
+      <div className="quiz-fill-card">
+        <span className="quiz-question-label">Question {questionNumber} — Fill in the Blank</span>
+
+        <div className="quiz-fill-sentence" aria-live="polite">
+          {segments.map((seg) => {
+            if (seg.type === 'text') {
+              // Split on spaces so each word wraps naturally
+              return seg.value.split(' ').filter(Boolean).map((w, wi) => (
+                <span key={`${seg.key}-${wi}`} className="quiz-fill-word">{w}</span>
+              ));
+            }
+
+            const val = answers[seg.index] ?? null;
+            const fb = feedbackMap[seg.index] ?? null;
+
+            return (
+              <BlankDropZone
+                key={seg.key}
+                index={seg.index}
+                value={val}
+                feedback={fb}
+                disabled={disabled}
+                snapKey={val ? snapKeys.current[seg.index] : 0}
+                onDrop={handleBlankDrop}
+                onClear={handleBlankClick}
+              />
+            );
+          })}
+        </div>
+
+        {/* Tap-select prompt (shows only if a word is tap-selected) */}
+        {tapSelected && !disabled && (
+          <p
+            style={{
+              marginTop: 16,
+              textAlign: 'center',
+              fontFamily: 'var(--quiz-font-display)',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: 'var(--quiz-primary)',
+              opacity: 0.8,
+            }}
+            aria-live="polite"
+          >
+            Now tap a blank to place &ldquo;{tapSelected}&rdquo;
+          </p>
+        )}
+      </div>
+
+      {/* ── Word chips ── */}
+      <p className="quiz-chips-label">Choose a word</p>
+      <div className="quiz-chips-grid" role="list">
+        {options.map((word, idx) => (
+          <WordChip
+            key={word}
+            word={word}
+            index={idx}
+            isUsed={usedWords.has(word)}
+            isTapSelected={tapSelected === word}
+            disabled={disabled}
+            onDragStart={setDraggingWord}
+            onDragEnd={() => setDraggingWord(null)}
+            onTap={handleChipTap}
           />
         ))}
       </div>
-
-      {/* Question with blank */}
-      <motion.div
-        className="bg-white rounded-3xl p-6 mb-6 shadow-lg border-2 border-orange-100"
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-      >
-        <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full mb-3">
-          Fill in the Blank
-        </span>
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-snug">
-          {question}
-        </h3>
-
-        {/* Answer slot */}
-        <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <span className="text-gray-500 font-medium">Your answer:</span>
-          <motion.div
-            layout
-            className={`
-              min-h-[48px] min-w-[120px] rounded-2xl border-3 border-dashed flex items-center justify-center px-4 py-2
-              ${selectedChip
-                ? 'border-purple-400 bg-purple-50'
-                : 'border-gray-300 bg-gray-50'
-              }
-            `}
-          >
-            <AnimatePresence mode="wait">
-              {selectedChip ? (
-                <motion.span
-                  key={selectedChip}
-                  initial={{ scale: 0, rotate: -10 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: 10 }}
-                  className="text-lg font-bold text-purple-700"
-                >
-                  {selectedChip}
-                </motion.span>
-              ) : (
-                <motion.span
-                  key="placeholder"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.5 }}
-                  className="text-gray-400 text-sm font-medium"
-                >
-                  Tap a word below ↓
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* Word chips */}
-      <div className="flex flex-wrap gap-3 justify-center">
-        {options.map((option, index) => {
-          const isSelected = selectedChip === option;
-          const colorClass = chipColors[index % chipColors.length];
-
-          return (
-            <motion.button
-              key={option}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08 }}
-              whileHover={!disabled ? { scale: 1.08, y: -2 } : {}}
-              whileTap={!disabled ? { scale: 0.9 } : {}}
-              onClick={() => handleChipClick(option)}
-              disabled={disabled}
-              className={`
-                relative rounded-2xl px-5 py-3 text-base sm:text-lg font-bold text-white
-                shadow-lg transition-all
-                bg-gradient-to-r ${colorClass}
-                ${isSelected ? 'ring-4 ring-white ring-offset-2 ring-offset-purple-100 scale-95 opacity-60' : ''}
-                ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:shadow-xl'}
-              `}
-            >
-              {option}
-              {isSelected && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md"
-                >
-                  <span className="text-xs text-purple-600">✓</span>
-                </motion.div>
-              )}
-            </motion.button>
-          );
-        })}
-      </div>
-    </motion.div>
+    </div>
   );
 };
 

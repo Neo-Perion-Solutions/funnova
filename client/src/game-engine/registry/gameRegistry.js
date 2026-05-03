@@ -7,6 +7,10 @@ import plantOrAnimalConfig from '../../features/games/plant-or-animal/config';
 import WaterUseGameWrapper from '../../features/games/water-use/WaterUseGameWrapper';
 import { waterUseConfig } from '../../features/games/water-use/config';
 
+import AirAroundUsGame from '../../features/games/air-around-us/AirAroundUsGame';
+import { airAroundUsConfig } from '../../features/games/air-around-us/config';
+import MatchBabyToAnimal from '../games/MatchBabyToAnimal';
+
 /**
  * Game Registry — central mapping of gameId → game component + config.
  *
@@ -72,6 +76,16 @@ registerGame('plant-or-animal', {
 registerGame('water-use', {
   component: WaterUseGameWrapper,
   config: waterUseConfig,
+});
+
+registerGame('air-around-us', {
+  component: AirAroundUsGame,
+  config: airAroundUsConfig,
+});
+
+registerGame('match-baby-to-animal', {
+  component: MatchBabyToAnimal,
+  config: {}, // No specific config needed for now
 });
 
 export default registry;

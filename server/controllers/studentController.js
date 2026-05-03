@@ -13,17 +13,6 @@
 const { pool } = require('../config/db');
 
 // ---------------------------------------------------------------------------
-// Helper: fetch all lesson IDs completed by a student
-// ---------------------------------------------------------------------------
-async function getCompletedLessonIds(client, studentId) {
-  const result = await client.query(
-    'SELECT lesson_id FROM lesson_completions WHERE student_id = $1',
-    [studentId]
-  );
-  return new Set(result.rows.map((r) => r.lesson_id));
-}
-
-// ---------------------------------------------------------------------------
 // Helper: compute unlock status for a sorted list of lessons
 // Rule: lesson[0] is always unlocked; lesson[N] requires lesson[N-1] completed
 // ---------------------------------------------------------------------------
@@ -78,43 +67,6 @@ function computeBadges(lessonsCompleted, streakDays, avgScore) {
   return badges;
 }
 
-// ---------------------------------------------------------------------------
-// Streak computation: count consecutive calendar days with at least one
-// lesson_completion, ending today.
-// ---------------------------------------------------------------------------
-async function computeStreak(client, studentId) {
-  const result = await client.query(
-    `SELECT DISTINCT DATE(completed_at AT TIME ZONE 'UTC') AS day
-     FROM lesson_completions
-     WHERE student_id = $1
-     ORDER BY day DESC`,
-    [studentId]
-  );
-
-  const days = result.rows.map((r) => r.day.toISOString().slice(0, 10));
-  if (days.length === 0) return 0;
-
-  const today = new Date().toISOString().slice(0, 10);
-  // streak only counts if student completed something today or yesterday
-  if (days[0] !== today) {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (days[0] !== yesterday) return 0;
-  }
-
-  let streak = 1;
-  for (let i = 1; i < days.length; i++) {
-    const prev = new Date(days[i - 1]);
-    const curr = new Date(days[i]);
-    const diff = (prev - curr) / 86400000;
-    if (diff === 1) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
 // ===========================================================================
 // GET /api/student/home
 // Returns: student info + subjects for their grade with overall progress
@@ -136,37 +88,25 @@ exports.getHome = async (req, res, next) => {
     }
     const student = studentRes.rows[0];
 
-    // 2. Subjects for that grade + lesson counts
+    // 2. Combined query: Get subjects, lesson counts, and completion counts in ONE query
     const subjectsRes = await client.query(
-      `SELECT s.id, s.name, s.icon,
-              COUNT(l.id) FILTER (WHERE l.is_deleted = false) AS total_lessons
+      `SELECT 
+         s.id, s.name, s.icon,
+         COUNT(DISTINCT l.id) FILTER (WHERE l.is_deleted = false) AS total_lessons,
+         COUNT(DISTINCT lc.lesson_id) AS completed_count
        FROM subjects s
        LEFT JOIN units u ON u.subject_id = s.id
-       LEFT JOIN lessons l ON l.unit_id = u.id
-       WHERE s.grade = $1
-       GROUP BY s.id
+       LEFT JOIN lessons l ON l.unit_id = u.id AND l.is_deleted = false
+       LEFT JOIN lesson_completions lc ON lc.lesson_id = l.id AND lc.student_id = $1
+       WHERE s.grade = $2
+       GROUP BY s.id, s.name, s.icon
        ORDER BY s.id ASC`,
-      [student.grade]
+      [studentId, student.grade]
     );
-
-    // 3. Per-subject completed lessons count
-    const completedRes = await client.query(
-      `SELECT u.subject_id, COUNT(lc.lesson_id) AS completed_count
-       FROM lesson_completions lc
-       JOIN lessons l ON l.id = lc.lesson_id
-       JOIN units u ON u.id = l.unit_id
-       WHERE lc.student_id = $1
-       GROUP BY u.subject_id`,
-      [studentId]
-    );
-    const completedMap = {};
-    completedRes.rows.forEach((r) => {
-      completedMap[r.subject_id] = parseInt(r.completed_count);
-    });
 
     const subjects = subjectsRes.rows.map((s) => {
       const total = parseInt(s.total_lessons) || 0;
-      const completed = completedMap[s.id] || 0;
+      const completed = parseInt(s.completed_count) || 0;
       return {
         id: s.id,
         name: s.name,
@@ -177,21 +117,115 @@ exports.getHome = async (req, res, next) => {
       };
     });
 
-    // 4. Streak
-    const streakDays = await computeStreak(client, studentId);
-
-    // 5. Recent completions (last 5)
-    const recentRes = await client.query(
-      `SELECT lc.completed_at, l.title AS lesson_title, s.name AS subject_name
+    // 3. Get all completed lesson IDs and dates in a single query
+    const completedLessonsRes = await client.query(
+      `SELECT lc.lesson_id, lc.completed_at, l.title AS lesson_title,
+              u.subject_id, s.name AS subject_name, DATE(lc.completed_at) AS completion_date
        FROM lesson_completions lc
        JOIN lessons l ON l.id = lc.lesson_id
        JOIN units u ON u.id = l.unit_id
        JOIN subjects s ON s.id = u.subject_id
        WHERE lc.student_id = $1
-       ORDER BY lc.completed_at DESC
-       LIMIT 5`,
+       ORDER BY lc.completed_at DESC`,
       [studentId]
     );
+
+    const completedSet = new Set(completedLessonsRes.rows.map(r => r.lesson_id));
+    const recentRes = completedLessonsRes.rows.slice(0, 5);
+
+    // 4. Compute streak more efficiently from already-fetched data
+    const streakDays = computeStreakFromData(completedLessonsRes.rows);
+
+    // 5. Get all lessons for this grade to find "last active lesson"
+    const allLessonsRes = await client.query(
+      `SELECT l.id, l.title AS lesson_title, l.lesson_order,
+              u.unit_order, u.subject_id,
+              s.name AS subject_name, s.icon AS subject_icon
+       FROM lessons l
+       JOIN units u ON u.id = l.unit_id
+       JOIN subjects s ON s.id = u.subject_id
+       WHERE s.grade = $1 AND l.is_deleted = false
+       ORDER BY s.id ASC, u.unit_order ASC, l.lesson_order ASC`,
+      [student.grade]
+    );
+
+    let lastActiveLesson = null;
+    if (allLessonsRes.rows.length > 0) {
+      const subjectLessons = {};
+      allLessonsRes.rows.forEach((l) => {
+        if (!subjectLessons[l.subject_id]) subjectLessons[l.subject_id] = [];
+        subjectLessons[l.subject_id].push(l);
+      });
+
+      let bestCandidate = null;
+      for (const subjectId of Object.keys(subjectLessons)) {
+        const lessons = subjectLessons[subjectId];
+        const withStatus = computeUnlockStatus(lessons, completedSet);
+        const hasActivity = withStatus.some((l) => l.is_completed);
+        const nextLesson = withStatus.find((l) => l.is_unlocked && !l.is_completed);
+        if (nextLesson) {
+          const subjectData = subjects.find((s) => s.id === parseInt(subjectId));
+          const totalLessonsInSubject = lessons.length;
+          const completedInSubject = withStatus.filter((l) => l.is_completed).length;
+          const candidate = {
+            lesson_id: nextLesson.id,
+            lesson_title: nextLesson.lesson_title,
+            subject_name: nextLesson.subject_name || subjectData?.name,
+            subject_icon: nextLesson.subject_icon || subjectData?.icon,
+            lesson_number: withStatus.indexOf(nextLesson) + 1,
+            total_lessons: totalLessonsInSubject,
+            completed_pct: totalLessonsInSubject > 0
+              ? Math.round((completedInSubject / totalLessonsInSubject) * 100)
+              : 0,
+          };
+          if (hasActivity) {
+            bestCandidate = candidate;
+            break;
+          }
+          if (!bestCandidate) bestCandidate = candidate;
+        }
+      }
+      lastActiveLesson = bestCandidate;
+    }
+
+    // 6. Compute badges and daily missions
+    const lessonsCompleted = parseInt(student.lessons_completed) || 0;
+    const avgScore = parseFloat(student.avg_score) || 0;
+    const badges = computeBadges(lessonsCompleted, streakDays, avgScore);
+
+    // Get today's stats in a single query
+    const todayStatsRes = await client.query(
+      `SELECT 
+         COUNT(DISTINCT CASE WHEN lc.lesson_id IS NOT NULL THEN lc.lesson_id END) AS lessons_today,
+         COUNT(DISTINCT CASE WHEN gs.id IS NOT NULL THEN gs.id END) AS games_today,
+         COUNT(DISTINCT CASE WHEN sa.id IS NOT NULL THEN sa.id END) AS answers_total,
+         SUM(CASE WHEN sa.is_correct THEN 1 ELSE 0 END) AS answers_correct
+       FROM (SELECT 1) AS dummy
+       LEFT JOIN lesson_completions lc ON lc.student_id = $1 AND DATE(lc.completed_at) = CURRENT_DATE
+       LEFT JOIN game_scores gs ON gs.student_id = $1 AND DATE(gs.played_at) = CURRENT_DATE
+       LEFT JOIN student_answers sa ON sa.student_id = $1 AND DATE(sa.answered_at) = CURRENT_DATE`,
+      [studentId]
+    );
+
+    const todayStats = todayStatsRes.rows[0] || {};
+    const todayLessons = parseInt(todayStats.lessons_today) || 0;
+    const todayGames = parseInt(todayStats.games_today) || 0;
+    const todayTotal = parseInt(todayStats.answers_total) || 0;
+    const todayCorrect = parseInt(todayStats.answers_correct) || 0;
+    const todayAccuracy = todayTotal > 0 ? Math.round((todayCorrect / todayTotal) * 100) : 0;
+
+    const dailyMissions = [
+      { id: 1, label: 'Complete 1 lesson', stars: 10, completed: todayLessons >= 1 },
+      { id: 2, label: 'Play 1 game', stars: 10, completed: todayGames >= 1 },
+      { id: 3, label: 'Get 80% accuracy', stars: 15, completed: todayTotal > 0 && todayAccuracy >= 80 },
+    ];
+
+    // 7. Get stars total (lessons * 10 + game scores)
+    const gameStarsRes = await client.query(
+      `SELECT COALESCE(SUM(total_score), 0) AS game_stars FROM game_scores WHERE student_id = $1`,
+      [studentId]
+    );
+    const starsTotal = lessonsCompleted * 10 + (parseInt(gameStarsRes.rows[0]?.game_stars) || 0);
 
     return res.json({
       success: true,
@@ -202,12 +236,16 @@ exports.getHome = async (req, res, next) => {
           grade: student.grade,
           section: student.section,
           avatar_url: student.avatar_url,
-          lessons_completed: parseInt(student.lessons_completed) || 0,
-          avg_score: parseFloat(student.avg_score) || 0,
+          lessons_completed: lessonsCompleted,
+          avg_score: avgScore,
         },
         streak_days: streakDays,
         subjects,
-        recent_completions: recentRes.rows,
+        recent_completions: recentRes,
+        last_active_lesson: lastActiveLesson,
+        daily_missions: dailyMissions,
+        stars_total: starsTotal,
+        badges,
       },
     });
   } catch (err) {
@@ -216,6 +254,67 @@ exports.getHome = async (req, res, next) => {
     client.release();
   }
 };
+
+// ---------------------------------------------------------------------------
+// Helper: compute streak from completion data (optimized version)
+// ---------------------------------------------------------------------------
+function computeStreakFromData(completedRows) {
+  if (completedRows.length === 0) return 0;
+
+  // Get unique dates from completion_date field
+  const dateSet = new Set();
+  completedRows.forEach(r => {
+    if (r.completion_date) dateSet.add(r.completion_date);
+  });
+  const days = Array.from(dateSet).sort().reverse();
+
+  if (days.length === 0) return 0;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  // streak only counts if student completed something today or yesterday
+  if (days[0] !== today && days[0] !== yesterday) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]);
+    const curr = new Date(days[i]);
+    const diff = (prev - curr) / 86400000;
+    if (diff === 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: get completed lesson IDs for a student
+// ---------------------------------------------------------------------------
+async function getCompletedLessonIds(client, studentId) {
+  const res = await client.query(
+    'SELECT lesson_id FROM lesson_completions WHERE student_id = $1',
+    [studentId]
+  );
+  return new Set(res.rows.map(r => r.lesson_id));
+}
+
+// ---------------------------------------------------------------------------
+// Helper: compute streak from db
+// ---------------------------------------------------------------------------
+async function computeStreak(client, studentId) {
+  const res = await client.query(
+    `SELECT DATE(completed_at) AS completion_date
+     FROM lesson_completions
+     WHERE student_id = $1
+     ORDER BY completed_at DESC`,
+    [studentId]
+  );
+  return computeStreakFromData(res.rows);
+}
+
 
 // ===========================================================================
 // GET /api/student/subjects/:subjectId/units

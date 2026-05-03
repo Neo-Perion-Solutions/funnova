@@ -1,25 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
 import GameTopbar from '../components/common/GameTopbar';
-import LevelPath from '../components/roadmap/LevelPath';
-import MascotGuide from '../components/game/MascotGuide';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useFetch } from '../hooks/useFetch';
 import { studentService } from '../services/student.service';
 import { useAuth } from '../hooks/useAuth';
 
-const subjectDecorations = {
-  'Mathematics': { emoji: '🔢', bg: 'from-blue-600 to-indigo-700', decor: ['📐', '📏', '🧮', '➕', '✖️'] },
-  'Science': { emoji: '🔬', bg: 'from-green-600 to-emerald-700', decor: ['🧪', '🌱', '⚗️', '🦠', '🔭'] },
-  'English': { emoji: '📚', bg: 'from-purple-600 to-purple-800', decor: ['📖', '✍️', '🔤', '📝', '🎭'] },
-  'History': { emoji: '📜', bg: 'from-amber-600 to-orange-700', decor: ['🏛️', '⚔️', '👑', '🗿', '🏺'] },
-  'Geography': { emoji: '🌍', bg: 'from-teal-600 to-cyan-700', decor: ['🗺️', '🧭', '⛰️', '🌊', '🏔️'] },
-};
-
-const getDecoration = (name) =>
-  subjectDecorations[name] || { emoji: '📖', bg: 'from-slate-600 to-slate-800', decor: ['📖', '✏️', '📝', '🎯', '💡'] };
+import SidebarUnitList from '../components/roadmap/SidebarUnitList';
+import LessonRoadmap from '../components/roadmap/LessonRoadmap';
+import CurrentLessonCard from '../components/roadmap/CurrentLessonCard';
 
 const SubjectPage = () => {
   const { id } = useParams();
@@ -32,83 +23,53 @@ const SubjectPage = () => {
   );
 
   const subjectData = subjectResponse?.data;
-  const subjectName = subjectData?.subject?.name || 'Subject';
   const units = subjectData?.units || [];
-  const decor = getDecoration(subjectName);
+
+  const [selectedUnitId, setSelectedUnitId] = useState(null);
+  const [selectedLessonId, setSelectedLessonId] = useState(null);
+
+  useEffect(() => {
+    if (units.length > 0 && !selectedUnitId) {
+      let initialUnit = units[0];
+      if (student?.current_lesson_id) {
+        const u = units.find(u => u.lessons?.some(l => l.id === student.current_lesson_id));
+        if (u) initialUnit = u;
+      }
+      setSelectedUnitId(initialUnit.id);
+    }
+  }, [units, student, selectedUnitId]);
+
+  useEffect(() => {
+    if (selectedUnitId) {
+      const unit = units.find(u => u.id === selectedUnitId);
+      if (unit && unit.lessons?.length > 0) {
+        // Just set the current lesson, don't force reset if user clicked around
+        if (!selectedLessonId || !unit.lessons.some(l => l.id === selectedLessonId)) {
+          const active = unit.lessons.find(l => l.is_unlocked && !l.is_completed) || unit.lessons[0];
+          setSelectedLessonId(active.id);
+        }
+      } else {
+        setSelectedLessonId(null);
+      }
+    }
+  }, [selectedUnitId, units, selectedLessonId]);
+
+  const selectedUnit = units.find(u => u.id === selectedUnitId);
+  const selectedLesson = selectedUnit?.lessons?.find(l => l.id === selectedLessonId);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F0F4FF] via-[#E8EDFF] to-[#F5F0FF] fun-scrollbar">
+    <div className="min-h-screen h-screen flex flex-col bg-[#F5F3FF] overflow-hidden">
+      {/* Top Bar */}
       <GameTopbar />
 
-      {/* Hero Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`relative overflow-hidden bg-gradient-to-r ${decor.bg} px-4 py-8 sm:px-6`}
-      >
-        {/* Floating decorations */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {decor.decor.map((emoji, i) => (
-            <motion.div
-              key={i}
-              animate={{
-                y: [0, -20, 0],
-                rotate: [0, 15, -15, 0],
-              }}
-              transition={{
-                duration: 3 + i,
-                repeat: Infinity,
-                delay: i * 0.5,
-              }}
-              className="absolute text-3xl opacity-15"
-              style={{
-                left: `${10 + (i * 20) % 80}%`,
-                top: `${10 + (i * 25) % 60}%`,
-              }}
-            >
-              {emoji}
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="relative max-w-4xl mx-auto">
-          {/* Back button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/student/dashboard')}
-            className="flex items-center gap-2 text-white/70 hover:text-white text-sm font-bold mb-4 bg-white/10 rounded-full px-4 py-2 backdrop-blur-sm border border-white/20 transition-colors"
-          >
-            <ChevronLeft size={16} /> Back to Home
-          </motion.button>
-
-          {/* Title */}
-          <div className="flex items-center gap-4">
-            <motion.div
-              animate={{ rotate: [0, -5, 5, 0], scale: [1, 1.05, 1] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl sm:text-5xl border border-white/30 shadow-xl"
-            >
-              {decor.emoji}
-            </motion.div>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-white">{subjectName}</h1>
-              <p className="text-white/60 text-sm font-bold mt-1">
-                🗺️ Your Learning Journey
-              </p>
-            </div>
+      {/* Main Content Area */}
+      <main className="flex-1 flex gap-4 lg:gap-6 p-4 lg:p-6 overflow-hidden">
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <LoadingSpinner />
           </div>
-        </div>
-      </motion.div>
-
-      {/* Content */}
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl">
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <LoadingSpinner />
-            </div>
-          ) : error ? (
+        ) : error ? (
+          <div className="flex-1 flex items-center justify-center">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -117,16 +78,37 @@ const SubjectPage = () => {
               <span className="text-4xl mb-3 block">😿</span>
               <p className="text-red-600 font-bold">{error}</p>
             </motion.div>
-          ) : (
-            <LevelPath units={units} currentLessonId={student?.current_lesson_id} />
-          )}
-        </div>
-      </main>
+          </div>
+        ) : (
+          <>
+            {/* Left Sidebar */}
+            <div className="hidden lg:block w-72 xl:w-80 shrink-0 h-full">
+              <SidebarUnitList 
+                units={units} 
+                selectedUnitId={selectedUnitId} 
+                onSelectUnit={setSelectedUnitId} 
+              />
+            </div>
 
-      {/* Mascot */}
-      <MascotGuide
-        message="Complete lessons in order to unlock the next one! 🔓"
-      />
+            {/* Center Map */}
+            <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center overflow-hidden">
+              <LessonRoadmap 
+                unit={selectedUnit} 
+                selectedLessonId={selectedLessonId} 
+                onSelectLesson={(l) => setSelectedLessonId(l.id)} 
+              />
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="hidden md:block w-80 shrink-0 h-full">
+              <CurrentLessonCard 
+                lesson={selectedLesson}
+                unit={selectedUnit}
+              />
+            </div>
+          </>
+        )}
+      </main>
     </div>
   );
 };

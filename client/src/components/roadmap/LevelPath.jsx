@@ -102,7 +102,7 @@ const LevelPath = ({ units = [], currentLessonId }) => {
                   return (
                     <motion.path
                       key={lessonIdx}
-                      d={`M ${x1} ${y1} C ${(x1+x2)/2} ${y1+40}, ${(x1+x2)/2} ${y2-40}, ${x2} ${y2}`}
+                      d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1 + 40}, ${(x1 + x2) / 2} ${y2 - 40}, ${x2} ${y2}`}
                       fill="none"
                       stroke={unit.lessons[lessonIdx].is_completed ? '#00B894' : '#E2E8F0'}
                       strokeWidth="4"

@@ -1,66 +1,95 @@
 /**
- * LessonPage - Redesigned Modern Layout
+ * LessonPageRedesigned — Adventure Game Themed Lesson Page
  *
- * Layout:
- * - Left (8 cols): Learning journey with roadmap
- * - Right (4 cols): Student stats, avatar, progress
- * - Full-screen game mode overlay
- * - Max-width container centered
+ * Layout (Desktop):
+ *   Left 65%  → Adventure zone with background, section roadmap nodes, boss card
+ *   Right 35% → Lesson Progress panel (sections, XP, stars, encouragement)
+ *
+ * Uses existing hooks: useLessonProgress, useFetch, studentService
+ * Route: /student/lesson/:lessonId
  */
 
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
-import { SectionRoadmap } from '../components/lesson/SectionRoadmap';
-import { StudentStatsPanel } from '../components/lesson/StudentStatsPanel';
 import { useLessonProgress } from '../hooks/useLessonProgress';
 import RewardPopup from '../components/game/RewardPopup';
 import GameEngine from '../game-engine/core/GameEngine';
 import { hasGame } from '../game-engine/registry/gameRegistry';
 import { useFetch } from '../hooks/useFetch';
 import { studentService } from '../services/student.service';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
+import '../styles/lesson-adventure.css';
 
-const LessonPage = () => {
+/* ---------- Section metadata ---------- */
+const SECTION_META = [
+  { type: 'mcq',        label: 'Multiple Choice',    icon: '📋', nodeColor: '#3D8B37' },
+  { type: 'fill_blank', label: 'Fill in the Blanks',  icon: '✏️', nodeColor: '#2196F3' },
+  { type: 'true_false', label: 'True or False',       icon: 'T/F', nodeColor: '#9C27B0' },
+  { type: 'game',       label: 'Game Challenge',      icon: '🎮', nodeColor: '#F5A623' },
+];
+
+/* ============================================================
+   COMPONENT
+   ============================================================ */
+const LessonPageRedesigned = () => {
   const navigate = useNavigate();
   const { lessonId } = useParams();
+  const { student } = useAuth();
 
-  // Fetch lesson metadata
+  // Data
   const { data: lessonResponse, loading: lessonLoading, error } = useFetch(() =>
     studentService.getLessonContent(lessonId)
   );
-
-  // Section progress (roadmap state)
   const { progress, loading: progressLoading, completeSection } = useLessonProgress(lessonId);
 
   const lessonData = lessonResponse?.data;
   const lesson = lessonData?.lesson;
-  const sections = lessonData?.sections || [];
   const games = (lessonData?.games || []).filter((g) => g.is_active && hasGame(g.game_url));
 
+  // State
   const [completedGames, setCompletedGames] = useState(new Set());
-  const [showGameInline, setShowGameInline] = useState(false);
   const [showGameFullscreen, setShowGameFullscreen] = useState(false);
   const [showReward, setShowReward] = useState(false);
 
+  // Derived
+  const totalSections = Object.keys(progress).length;
+  const completedSections = Object.values(progress).filter((s) => s.status === 'completed').length;
+  const studentName = student?.name || 'Explorer';
+  const studentGrade = student?.grade || 3;
+  const totalStars = (lessonData?.student?.total_stars) || 230;
+  const totalXP = (lessonData?.student?.total_xp) || 1250;
+  const xpEarned = completedSections * 100;
+  const starsEarned = completedSections * 10;
+
+  /* ---------- Handlers ---------- */
   const handleGameFinish = useCallback(async (gameResult) => {
     try {
-      await studentService.submitGameScore(gameResult.gameId, {
-        score: gameResult.score,
-        accuracy: gameResult.accuracy,
-      });
+      if (gameResult.gameId !== 999) {
+        await studentService.submitGameScore(gameResult.gameId, {
+          score: gameResult.score,
+          accuracy: gameResult.accuracy,
+        });
+      }
       setCompletedGames((prev) => new Set(prev).add(gameResult.gameId));
       await completeSection('game', gameResult.score, 100);
       toast.success(`Game complete! Score: ${gameResult.score} 🎮`);
       setShowGameFullscreen(false);
-      setShowGameInline(false);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save game score');
     }
   }, [completeSection]);
 
-  const handleSectionStart = (type) => {
+  const handleSectionClick = (type) => {
+    const sec = progress[type];
+    
+    // DEV OVERRIDE: Always allow game access for testing
+    if (type !== 'game' && (!sec || sec.status === 'locked')) {
+      toast('Complete the previous section to unlock this one! 🔒');
+      return;
+    }
     if (type === 'game') {
       if (games.length > 0) {
         setShowGameFullscreen(true);
@@ -72,184 +101,305 @@ const LessonPage = () => {
     navigate(`/student/lesson/${lessonId}/section/${type}`);
   };
 
-  // Loading state
+  /* ---------- Loading ---------- */
   if (lessonLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-600 to-indigo-700">
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'linear-gradient(180deg, #87CEEB, #4CAF50)' }}>
         <div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1 }}
+            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
             className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"
           />
-          <p className="text-white text-lg font-bold">Loading adventure...</p>
+          <p className="text-white text-lg font-bold" style={{ fontFamily: "'Fredoka One', cursive" }}>
+            Loading adventure...
+          </p>
         </div>
       </div>
     );
   }
 
-  // Error state
+  /* ---------- Error ---------- */
   if (error || !lesson) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-600 to-indigo-700 p-4">
-        <div className="text-center text-white">
-          <div className="text-6xl mb-4">🚫</div>
-          <h2 className="text-2xl font-bold mb-2">Oops!</h2>
-          <p className="mb-6">{error || 'Lesson not found'}</p>
-          <button
-            onClick={() => navigate('/student/dashboard')}
-            className="bg-white text-purple-600 font-bold px-8 py-3 rounded-2xl hover:scale-105 transition-transform"
-          >
-            Back to Home
-          </button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6" style={{ background: 'linear-gradient(180deg, #87CEEB, #4CAF50)' }}>
+        <div className="text-6xl">🚫</div>
+        <h2 className="text-2xl font-bold text-white">Oops!</h2>
+        <p className="text-white/80 text-center max-w-md">{error || 'Lesson not found'}</p>
+        <button
+          onClick={() => navigate('/student/dashboard')}
+          className="bg-white text-green-700 font-bold px-8 py-3 rounded-2xl hover:scale-105 transition-transform shadow-lg"
+        >
+          Back to Home
+        </button>
       </div>
     );
   }
 
+  /* ---------- Render ---------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 transition-colors"
-          >
-            <ChevronLeft size={20} /> Back
-          </motion.button>
+    <div className="min-h-screen" style={{ background: '#F0F4FF' }}>
+      {/* ====== HEADER ====== */}
+      <header className="adv-header">
+        <button className="adv-header__back" onClick={() => navigate(-1)} aria-label="Go back">
+          <ChevronLeft size={18} /> Back
+        </button>
 
-          <div className="text-center flex-1 px-3">
-            <p className="text-xs font-bold text-purple-600 uppercase tracking-widest">
-              {lesson.unit_title}
-            </p>
-            <h1 className="text-xl font-extrabold text-gray-900">
-              {lesson.title}
-            </h1>
+        <div className="adv-header__center">
+          <div className="adv-header__unit">{lesson.unit_title || 'Unit 1'}</div>
+          <h1 className="adv-header__title">{lesson.title}</h1>
+        </div>
+
+        <div className="adv-header__badges">
+          <div className="adv-badge adv-badge--gold">⭐ {totalStars}</div>
+          <div className="adv-badge adv-badge--xp">XP {totalXP.toLocaleString()}</div>
+          <div className="adv-avatar-section">
+            <div className="adv-avatar-circle">{studentName.charAt(0).toUpperCase()}</div>
+            <div className="adv-avatar-info">
+              <div className="adv-avatar-name">{studentName}</div>
+              <div className="adv-avatar-grade">Grade {studentGrade}</div>
+            </div>
           </div>
-
-          {lesson.is_completed && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm"
-            >
-              ✓ Completed
-            </motion.div>
-          )}
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-[1400px] mx-auto px-4 py-8">
-        <div className="grid grid-cols-12 gap-6">
+      {/* ====== MAIN 2-COLUMN ====== */}
+      <div className="adv-main">
 
-          {/* LEFT SIDE: Learning Journey (8 cols) */}
-          <div className="col-span-12 lg:col-span-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              {/* Lesson Description Card */}
-              <div className="bg-white rounded-3xl border-2 border-gradient-to-r from-purple-200 to-blue-200 p-6 mb-8 shadow-lg">
-                <div className="flex items-start gap-4">
-                  <div className="text-4xl">🎓</div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-black text-gray-900 mb-2">Today's Lesson</h3>
-                    <p className="text-gray-600 leading-relaxed">
-                      {lesson.description || 'Complete all sections to master this topic and unlock rewards!'}
-                    </p>
-                  </div>
-                </div>
+        {/* ---- LEFT: Adventure Zone ---- */}
+        <div className="adv-left">
+          <img
+            src="/assets/lesson/adventure-bg.png"
+            alt=""
+            className="adv-left__bg-img"
+            loading="lazy"
+          />
+
+          {/* Decorative emojis */}
+          <span className="adv-deco adv-deco--rainbow">🌈</span>
+          <span className="adv-deco adv-deco--water">💧</span>
+          <span className="adv-deco adv-deco--flower">🌸</span>
+          <span className="adv-deco adv-deco--mushroom">🍄</span>
+
+          {/* Today's Lesson Card */}
+          <div className="adv-today-card">
+            <div className="adv-today-card__header">
+              <span>⭐</span>
+              <span className="adv-today-card__badge">Today's Lesson</span>
+            </div>
+            <div className="adv-today-card__body">
+              {lesson.description || "Let's explore how plants look different and grow in amazing ways!"}
+            </div>
+            <div className="adv-today-card__footer">
+              ⭐ Complete all sections to earn stars and XP!
+            </div>
+          </div>
+
+          {/* ---- SECTION ROADMAP ---- */}
+          {progressLoading ? (
+            <div className="text-center py-12 text-white font-bold text-lg">Loading sections...</div>
+          ) : (
+            <div className="adv-roadmap">
+              {/* START sign */}
+              <div className="adv-start-sign">
+                <div className="adv-start-sign__board">START</div>
+                <div className="adv-start-sign__pole" />
               </div>
 
-              {/* Assessment Roadmap */}
-              {progressLoading ? (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="inline-block animate-pulse text-2xl mb-2">⏳</div>
-                  <p>Loading sections...</p>
-                </div>
-              ) : (
-                <SectionRoadmap
-                  progress={progress}
-                  onSectionStart={handleSectionStart}
-                  currentLevel={lesson.is_completed ? null : Object.keys(progress).find(k => progress[k].status !== 'completed')}
-                />
-              )}
+              {SECTION_META.map((sec, idx) => {
+                const status = progress[sec.type]?.status || 'locked';
+                const isCompleted = status === 'completed';
+                const isUnlocked = status === 'unlocked';
+                const isLocked = status === 'locked';
 
-              {/* Boss Level / Game Challenge - Sticky Bottom */}
-              {games.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-8"
-                >
-                  <div
-                    onClick={() => handleSectionStart('game')}
-                    className="relative cursor-pointer group"
-                  >
-                    {/* Glow effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 rounded-3xl opacity-30 blur-xl group-hover:opacity-50 transition-opacity" />
+                return (
+                  <React.Fragment key={sec.type}>
+                    {/* Connector line */}
+                    {idx > 0 && (
+                      <div
+                        className={`adv-connector ${
+                          progress[SECTION_META[idx - 1].type]?.status === 'completed'
+                            ? 'adv-connector--done'
+                            : 'adv-connector--pending'
+                        }`}
+                      />
+                    )}
 
-                    {/* Card */}
-                    <div className="relative bg-gradient-to-br from-amber-300 via-orange-300 to-rose-300 rounded-3xl p-8 transform group-hover:scale-105 transition-transform duration-300 shadow-2xl border-4 border-white">
-                      <div className="absolute top-4 right-6 bg-purple-600 text-white px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider">
-                        🏆 Boss Level
+                    {/* Node button */}
+                    <button
+                      className={`adv-node ${
+                        isCompleted ? 'adv-node--completed' :
+                        isUnlocked  ? 'adv-node--unlocked'  :
+                                      'adv-node--locked'
+                      }`}
+                      onClick={() => handleSectionClick(sec.type)}
+                      aria-label={`${sec.label} — ${status}`}
+                      aria-disabled={sec.type !== 'game' && isLocked}
+                    >
+                      <div className="adv-node__circle" style={{ borderColor: (sec.type !== 'game' && isLocked) ? '#9E9E9E' : sec.nodeColor }}>
+                        {/* Icon / text inside */}
+                        <span style={{ fontSize: sec.icon.length <= 2 ? '28px' : '18px', fontWeight: 900, color: isLocked ? '#999' : '#fff' }}>
+                          {sec.icon}
+                        </span>
+
+                        {/* Completed stars */}
+                        {isCompleted && (
+                          <div className="adv-node__stars">
+                            <span className="adv-node__star">⭐</span>
+                            <span className="adv-node__star">⭐</span>
+                          </div>
+                        )}
+
+                        {/* Completed checkmark */}
+                        {isCompleted && <div className="adv-node__check">✓</div>}
+
+                        {/* Locked padlock */}
+                        {(sec.type !== 'game' && isLocked) && <div className="adv-node__lock">🔒</div>}
+
+                        {/* Unlocked / locked number badge */}
+                        {!isCompleted && (
+                          <div
+                            className="adv-node__number"
+                            style={{ background: isUnlocked ? sec.nodeColor : '#9E9E9E' }}
+                          >
+                            {idx + 1}
+                          </div>
+                        )}
                       </div>
+                      <div className="adv-node__label">{sec.label}</div>
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-3xl font-black text-white mb-2">Game Challenge</h3>
-                          <p className="text-white/90 font-bold text-lg">
-                            Test your knowledge with Plant or Animal!
-                          </p>
-                          <p className="text-white/70 text-sm mt-2">Complete all sections to unlock this challenge</p>
-                        </div>
+          {/* Decorative images */}
+          <img src="/assets/lesson/student-character.png" alt="" className="adv-left__character" />
+          <img src="/assets/lesson/treasure-chest.png" alt="" className="adv-left__treasure" />
 
-                        <motion.div
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ repeat: Infinity, duration: 2 }}
-                          className="text-6xl shrink-0"
-                        >
-                          🎮
-                        </motion.div>
-                      </div>
-
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="mt-6 w-full bg-white text-orange-600 font-black py-4 px-6 rounded-2xl text-lg hover:bg-gray-100 transition-colors shadow-lg"
-                      >
-                        ⚡ PLAY GAME
-                      </motion.button>
-
-                      {completedGames.size > 0 && (
-                        <div className="mt-4 text-center text-white/80 text-sm">
-                          ✓ Completed! Score: {completedGames.size}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
-          </div>
-
-          {/* RIGHT SIDE: Student Stats (4 cols) */}
-          <div className="col-span-12 lg:col-span-4">
-            <StudentStatsPanel
-              lessonData={lessonData}
-              progress={progress}
-              completedGames={completedGames}
-            />
+          {/* ---- BOSS LEVEL CARD ---- */}
+          <div className="adv-boss">
+            <div className="adv-boss__info">
+              <div className="adv-boss__label">🔥 BOSS LEVEL</div>
+              <div className="adv-boss__title">Game Challenge</div>
+              <div className="adv-boss__desc">Test your knowledge and win big rewards!</div>
+            </div>
+            <button
+              className="adv-boss__btn"
+              onClick={() => handleSectionClick('game')}
+              aria-label="Play Game Challenge"
+            >
+              🎮 Play Game
+            </button>
           </div>
         </div>
-      </main>
 
-      {/* Full-Screen Game Mode */}
+        {/* ---- RIGHT: Lesson Progress Panel ---- */}
+        <div className="adv-right">
+          <div className="adv-progress-panel">
+            <div className="adv-progress-panel__title">🏆 Lesson Progress</div>
+
+            {/* Sections Completed */}
+            <div className="adv-stat adv-animate-in">
+              <div className="adv-stat__header">
+                <div className="adv-stat__left">
+                  <span className="adv-stat__icon">⭐</span>
+                  <span className="adv-stat__label">Sections Completed</span>
+                </div>
+                <span className="adv-stat__value">{completedSections}/{totalSections}</span>
+              </div>
+              <div className="adv-segments">
+                {Object.keys(progress).map((key, i) => (
+                  <div
+                    key={key}
+                    className={`adv-segment ${progress[key].status === 'completed' ? 'adv-segment--filled' : ''}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* XP Earned */}
+            <div className="adv-stat adv-animate-in">
+              <div className="adv-stat__header">
+                <div className="adv-stat__left">
+                  <span className="adv-stat__icon" style={{ color: '#6C63FF' }}>🔷</span>
+                  <span className="adv-stat__label">XP Earned</span>
+                </div>
+                <span className="adv-stat__value">{xpEarned} / 400</span>
+              </div>
+              <div className="adv-stat__bar">
+                <div
+                  className="adv-stat__fill adv-stat__fill--xp"
+                  style={{ width: `${Math.min((xpEarned / 400) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Stars Earned */}
+            <div className="adv-stat adv-animate-in">
+              <div className="adv-stat__header">
+                <div className="adv-stat__left">
+                  <span className="adv-stat__icon">⭐</span>
+                  <span className="adv-stat__label">Stars Earned</span>
+                </div>
+                <span className="adv-stat__value">{starsEarned} / 40</span>
+              </div>
+              <div className="adv-stat__bar">
+                <div
+                  className="adv-stat__fill adv-stat__fill--stars"
+                  style={{ width: `${Math.min((starsEarned / 40) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Section detail list */}
+            <div style={{ marginTop: 24 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 800, color: '#6B7280', marginBottom: 12, fontFamily: "'Nunito', sans-serif" }}>
+                SECTION DETAILS
+              </h4>
+              {SECTION_META.map((sec) => {
+                const s = progress[sec.type] || { status: 'locked' };
+                return (
+                  <div
+                    key={sec.type}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      marginBottom: 8,
+                      background: s.status === 'completed' ? '#E8F5E9' : s.status === 'unlocked' ? '#E3F2FD' : '#F5F5F5',
+                      border: s.status === 'completed' ? '1px solid #A5D6A7' : s.status === 'unlocked' ? '1px solid #90CAF9' : '1px solid #E0E0E0',
+                    }}
+                  >
+                    <span style={{ fontSize: 22 }}>{sec.icon}</span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#333', fontFamily: "'Nunito', sans-serif" }}>
+                      {sec.label}
+                    </span>
+                    <span style={{ fontSize: 16 }}>
+                      {s.status === 'completed' ? '✅' : s.status === 'unlocked' ? '▶️' : '🔒'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Encouragement */}
+            <div className="adv-encourage">
+              <div className="adv-encourage__text">Keep going! You're doing great! 👍</div>
+              <img
+                src="/assets/lesson/tiger-mascot.png"
+                alt="Tiger mascot"
+                className="adv-encourage__mascot"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ====== FULLSCREEN GAME OVERLAY ====== */}
       <AnimatePresence>
         {showGameFullscreen && games.length > 0 && (
           <motion.div
@@ -260,31 +410,22 @@ const LessonPage = () => {
           >
             <div className="h-full w-full flex items-center justify-center p-4">
               <div className="w-full max-w-4xl h-full max-h-[90vh] relative">
-                {/* Close button */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                <button
                   onClick={() => setShowGameFullscreen(false)}
                   className="absolute top-4 right-4 z-10 w-12 h-12 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center font-bold text-2xl backdrop-blur-sm transition-colors"
+                  aria-label="Close game"
                 >
                   ✕
-                </motion.button>
-
-                {/* Game container */}
+                </button>
                 <div className="h-full overflow-auto">
                   {games.map((game) => (
-                    <motion.div
-                      key={game.id}
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.95, opacity: 0 }}
-                    >
+                    <div key={game.id}>
                       <GameEngine
                         gameId={game.game_url}
                         gameDbId={game.id}
                         onFinish={handleGameFinish}
                       />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -298,4 +439,4 @@ const LessonPage = () => {
   );
 };
 
-export default LessonPage;
+export default LessonPageRedesigned;

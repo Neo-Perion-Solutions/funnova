@@ -161,9 +161,8 @@ const StudentProfilePage = () => {
                         <span className="font-bold text-gray-800">{s.subject_name}</span>
                         <p className="text-xs text-gray-400 font-bold">{s.correct_count}/{s.total_answered} correct</p>
                       </div>
-                      <div className={`text-2xl font-black ${
-                        s.accuracy_pct >= 80 ? 'text-green-500' : s.accuracy_pct >= 50 ? 'text-amber-500' : 'text-red-500'
-                      }`}>
+                      <div className={`text-2xl font-black ${s.accuracy_pct >= 80 ? 'text-green-500' : s.accuracy_pct >= 50 ? 'text-amber-500' : 'text-red-500'
+                        }`}>
                         {s.accuracy_pct}%
                       </div>
                     </div>
